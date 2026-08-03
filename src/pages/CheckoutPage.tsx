@@ -24,7 +24,6 @@ const CheckoutPage = () => {
     const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
     const [showPayment, setShowPayment] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
-    const [bookingCount, setBookingCount] = useState<number | null>(null);
 
     const [formData, setFormData] = useState({
         email: "",
@@ -52,11 +51,6 @@ const CheckoutPage = () => {
                 firstName: user.full_name?.split(' ')[0] || "",
                 lastName: user.full_name?.split(' ').slice(1).join(' ') || "",
             }));
-
-            // Check if user is a first-time member (0 bookings)
-            api.bookings.getAll({ user_id: user.id }).then(bookings => {
-                setBookingCount(bookings.length);
-            }).catch(() => setBookingCount(0));
         }
     }, [user]);
 
@@ -98,13 +92,8 @@ const CheckoutPage = () => {
     const shippingCost = deliveryMethod === 'ship' 
         ? (cartTotal >= platformSettings.free_shipping_min ? 0 : shippingFeeConfig) 
         : 0;
-
-    const isFirstTimeMember = user && bookingCount === 0;
-    const discountAmount = isFirstTimeMember ? 50 : 0;
-    
-    const taxableTotal = Math.max(0, cartTotal - discountAmount);
-    const taxAmount = taxableTotal * TAX_RATE;
-    const finalTotal = Math.max(0, taxableTotal + shippingCost + taxAmount);
+    const taxAmount = cartTotal * TAX_RATE;
+    const finalTotal = cartTotal + shippingCost + taxAmount;
 
     const handleProceedToPayment = async () => {
         if (!user) {
@@ -151,7 +140,6 @@ const CheckoutPage = () => {
                 } : null,
                 delivery_method: deliveryMethod,
                 payment_status: 'pending',
-                discount_amount: discountAmount
             };
 
             const response: any = await api.orders.create(orderData);
@@ -477,12 +465,6 @@ const CheckoutPage = () => {
                                     <span className="text-slate-600">Estimated Taxes (6%)</span>
                                     <span className="font-bold text-[#1A1A1A]">MYR {taxAmount.toFixed(2)}</span>
                                 </div>
-                                {isFirstTimeMember && (
-                                    <div className="flex justify-between text-sm text-green-600 font-bold mt-2">
-                                        <span>First-Time Member Promo</span>
-                                        <span>- MYR {discountAmount.toFixed(2)}</span>
-                                    </div>
-                                )}
                             </div>
 
                             {/* Total */}

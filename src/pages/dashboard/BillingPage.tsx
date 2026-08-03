@@ -120,12 +120,10 @@ const BillingPage = () => {
   const [creating, setCreating] = useState(false);
   const [services, setServices] = useState<Array<{ id: string; name: string; price: number }>>([]);
   const [products, setProducts] = useState<Array<{ id: string; name: string; price: number }>>([]);
-  const [customers, setCustomers] = useState<Array<{ id: string; name: string; phone: string; is_member?: boolean; booking_count?: number; loyalty_points?: number }>>([]);
+  const [customers, setCustomers] = useState<Array<{ id: string; name: string; phone: string }>>([]);
   type InvoiceItem = { type: 'service' | 'product', id?: string, name: string, price: number, quantity: number };
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
-  const [promoCodeInput, setPromoCodeInput] = useState("");
-  const [promoCodeStatus, setPromoCodeStatus] = useState<"none"|"valid"|"invalid">("none");
   const [newInvoice, setNewInvoice] = useState({
     customerId: "",
     date: format(new Date(), "yyyy-MM-dd"),
@@ -134,27 +132,12 @@ const BillingPage = () => {
     status: "paid" as 'paid' | 'pending',
     notes: "",
     guestPhone: "",
-    guestEmail: "",
-    discount: 0,
-    promoCode: "",
-    promoDiscount: 0,
-    promoDiscount: 0,
-    pointsUsed: 0,
-    existingBookingId: "",
-    depositPaid: 0
+    guestEmail: ""
   });
 
-  const pendingCustomerBookings = invoices.filter(inv => inv.customerId === newInvoice.customerId && (inv.status === 'pending' || inv.status === 'deposit'));
-
   const computedTotalAmount = invoiceItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  // Calculate maximum points allowed (30% of computedTotalAmount)
-  const POINTS_CONVERSION_RATE = 0.05; // 100 points = RM5
-  const maxPointsAllowed = Math.floor((computedTotalAmount * 0.30) / POINTS_CONVERSION_RATE);
-  
-  const pointsDiscount = newInvoice.pointsUsed * POINTS_CONVERSION_RATE;
-  
-  const finalTotalAmount = Math.max(0, computedTotalAmount - (newInvoice.discount || 0) - (newInvoice.promoDiscount || 0) - pointsDiscount);
+
+  // Selected Invoice Modal State
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
 
@@ -302,7 +285,7 @@ const BillingPage = () => {
           customer: customerName,
           customerId: booking.user_id,
           service: booking.service_name || booking.service?.name || 'Service',
-          amount: actualPaid || finalPayable, // Show what was paid, or what is due
+          amount: actualPaid || totalValue, // Show what was paid, or what is due
           date: booking.booking_date,
           status: isDeposit ? 'deposit' : iscash ? 'cash' : isPaid ? 'paid' : 'pending',
           paymentMethod: pp?.payment_method || booking.payment_method || 'Cash',
@@ -310,7 +293,7 @@ const BillingPage = () => {
           customerEmail: pp?.invoice_url ? '' : (booking.customer_email || booking.user?.email || ''),
           customerPhone: customerPhone,
           discount,
-          subtotal: totalValue, // base subtotal for the display
+          subtotal: actualPaid || totalValue, // base subtotal for the display
           totalValue, // keeping track of the actual total for later calculations
           coinsUsed,
           loyaltyPointsUsed,
@@ -319,7 +302,6 @@ const BillingPage = () => {
           invoiceUrl: pp?.invoice_url || `${window.location.origin}/invoices/${booking.id}`,
           notes: booking.notes,
           staff: booking.staff_name || booking.staff?.display_name || '-',
-          couponCode: booking.coupon_code || '',
         };
       });
 
@@ -415,38 +397,19 @@ const BillingPage = () => {
         }
       }
       
-      if (newInvoice.existingBookingId) {
-        // SETTLE EXISTING BOOKING
-        await api.bookings.settleManualInvoice(newInvoice.existingBookingId, {
-          amount_paid: Math.max(0, computedTotalAmount - newInvoice.depositPaid - (newInvoice.discount || 0) - (newInvoice.promoDiscount || 0)),
-          discount_amount: (newInvoice.discount || 0) + (newInvoice.promoDiscount || 0),
-          coupon_code: newInvoice.promoCode || undefined,
-          explicit_loyalty_points: newInvoice.pointsUsed || 0,
-          explicit_loyalty_discount: pointsDiscount || 0,
-          payment_method: newInvoice.paymentMethod,
-          notes: `[GUEST: ${newInvoice.notes || 'Walk-in'} | ${newInvoice.guestPhone || ''} ] ITEMS: ${itemsPayload}`,
-        });
-      } else {
-        // CREATE NEW BOOKING
-        await api.bookings.create({
-          user_id: finalCustomerId || currentSalon.id,
-          salon_id: currentSalon.id,
-          service_id: invoiceItems.find(i => i.type === 'service')?.id || "manual-billing-no-service",
-          total_amount: finalTotalAmount,
-          discount_amount: (newInvoice.discount || 0) + (newInvoice.promoDiscount || 0),
-          coupon_code: newInvoice.promoCode || undefined,
-          explicit_loyalty_points: newInvoice.pointsUsed || 0,
-          explicit_loyalty_discount: pointsDiscount || 0,
-          booking_date: newInvoice.date,
-          booking_time: newInvoice.time,
-          price_paid: Math.max(0, computedTotalAmount - newInvoice.depositPaid - (newInvoice.discount || 0) - (newInvoice.promoDiscount || 0)),
-          status: newInvoice.status === 'paid' ? 'completed' : 'confirmed',
-          payment_method: newInvoice.paymentMethod,
-          notes: `[GUEST: ${newInvoice.notes || 'Walk-in'} | ${newInvoice.guestPhone || ''} ] ITEMS: ${itemsPayload}`,
-        });
-      }
+      await api.bookings.create({
+        salon_id: currentSalon.id,
+        user_id: finalCustomerId || undefined,
+        service_id: mainService.id || 'custom-item',
+        booking_date: newInvoice.date,
+        booking_time: newInvoice.time,
+        price_paid: computedTotalAmount,
+        status: newInvoice.status === 'paid' ? 'completed' : 'confirmed',
+        payment_method: newInvoice.paymentMethod,
+        notes: `[GUEST: ${newInvoice.notes || 'Walk-in'} | ${newInvoice.guestPhone || ''} ] ITEMS: ${itemsPayload}`,
+      });
 
-      toast({ title: "Invoice Generated", description: "Successfully updated ledger" });
+      toast({ title: "Invoice Created", description: "Successfully added to ledger" });
       setShowCreateDialog(false);
       fetchInvoices();
     } catch (error: any) {
@@ -513,29 +476,7 @@ const BillingPage = () => {
             <Button variant="outline" onClick={fetchInvoices} disabled={refreshing} className="rounded-xl font-bold bg-muted/50 border-border hover:bg-muted transition-all">
               <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
             </Button>
-            <Button onClick={() => { 
-              fetchServicesAndProducts(); 
-              setInvoiceItems([]); 
-              setNewInvoice({
-                customerId: "",
-                date: format(new Date(), "yyyy-MM-dd"),
-                time: format(new Date(), "HH:mm"),
-                paymentMethod: "Cash",
-                status: "paid",
-                notes: "",
-                guestPhone: "",
-                guestEmail: "",
-                discount: 0,
-                promoCode: "",
-                promoDiscount: 0,
-                pointsUsed: 0,
-                existingBookingId: "",
-                depositPaid: 0
-              });
-              setPromoCodeInput("");
-              setPromoCodeStatus("none");
-              setShowCreateDialog(true); 
-            }} className="bg-accent text-white font-black rounded-xl shadow-lg shadow-accent/20">
+            <Button onClick={() => { fetchServicesAndProducts(); setInvoiceItems([]); setShowCreateDialog(true); }} className="bg-accent text-white font-black rounded-xl shadow-lg shadow-accent/20">
               <Plus className="w-4 h-4 mr-2" /> New Invoice
             </Button>
           </div>
@@ -782,7 +723,7 @@ const BillingPage = () => {
                       </div>
                       {selectedInvoice.discount > 0 && (
                         <div className="flex justify-between font-medium text-amber-600">
-                          <span>{selectedInvoice.discount === 50 ? 'First-Time Member Promo' : 'Coupons/Discount'}</span>
+                          <span>Coupons/Discount</span>
                           <span>- MYR {selectedInvoice.discount.toFixed(2)}</span>
                         </div>
                       )}
@@ -829,7 +770,7 @@ const BillingPage = () => {
 
         {/* Create Invoice Dialog */}
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogContent className="max-w-md rounded-3xl border-none p-6 max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-md rounded-3xl border-none p-6">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black">Manual Billing</DialogTitle>
               <DialogDescription className="font-medium">Direct entry for walk-in payments.</DialogDescription>
@@ -863,9 +804,7 @@ const BillingPage = () => {
                             <CommandItem
                               value="walkin"
                               onSelect={() => {
-                                setPromoCodeInput("");
-                                setPromoCodeStatus("none");
-                                setNewInvoice({ ...newInvoice, customerId: "walkin", notes: "", guestPhone: "", discount: 0, promoCode: "", promoDiscount: 0, existingBookingId: "", depositPaid: 0 });
+                                setNewInvoice({ ...newInvoice, customerId: "walkin", notes: "", guestPhone: "" });
                                 setCustomerSearchOpen(false);
                               }}
                               className="cursor-pointer"
@@ -883,22 +822,7 @@ const BillingPage = () => {
                                 key={c.id}
                                 value={`${c.name} ${c.phone || ""}`}
                                 onSelect={() => {
-                                  let appliedPromoCode = "";
-                                  let appliedPromoDiscount = 0;
-                                  if (c.is_member && c.booking_count === 0) {
-                                    appliedPromoCode = "WELCOME50";
-                                    appliedPromoDiscount = 50;
-                                    setPromoCodeInput("WELCOME50");
-                                    setPromoCodeStatus("valid");
-                                    toast({
-                                      title: "New Member Promo Applied!",
-                                      description: "WELCOME50 discount has been automatically applied to this first-time member's invoice.",
-                                    });
-                                  } else {
-                                    setPromoCodeInput("");
-                                    setPromoCodeStatus("none");
-                                  }
-                                  setNewInvoice({ ...newInvoice, customerId: c.id, notes: c.name, guestPhone: c.phone || "", discount: 0, promoCode: appliedPromoCode, promoDiscount: appliedPromoDiscount, existingBookingId: "", depositPaid: 0 });
+                                  setNewInvoice({ ...newInvoice, customerId: c.id, notes: c.name, guestPhone: c.phone || "" });
                                   setCustomerSearchOpen(false);
                                 }}
                                 className="cursor-pointer"
@@ -918,41 +842,6 @@ const BillingPage = () => {
                     </PopoverContent>
                   </Popover>
                 </div>
-                
-                {pendingCustomerBookings.length > 0 && (
-                  <div className="space-y-2 mt-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                    <Label className="text-[10px] font-black uppercase text-blue-800 ml-1">Settle Existing Booking (Optional)</Label>
-                    <Select 
-                      value={newInvoice.existingBookingId} 
-                      onValueChange={(val) => {
-                        const b = pendingCustomerBookings.find(bk => bk.bookingId === val);
-                        if (b) {
-                          const actualDeposit = b.status === 'deposit' ? b.amount : 0;
-                          setNewInvoice({ ...newInvoice, existingBookingId: val, depositPaid: actualDeposit });
-                          // Try to pre-fill the service if we can find it
-                          const matchingService = services.find(s => s.name === b.service);
-                          if (matchingService) {
-                            setInvoiceItems([{ type: 'service', id: matchingService.id, name: matchingService.name, price: Number(matchingService.price), quantity: 1 }]);
-                          }
-                        } else if (val === "none") {
-                          setNewInvoice({ ...newInvoice, existingBookingId: "", depositPaid: 0 });
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-full bg-white border-blue-200">
-                        <SelectValue placeholder="Select a pending booking" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Create New Invoice (No Booking)</SelectItem>
-                        {pendingCustomerBookings.map(b => (
-                          <SelectItem key={b.bookingId} value={b.bookingId}>
-                            {b.date} - {b.service} {b.status === 'deposit' ? `(Deposit Paid: MYR ${b.amount})` : '(No Deposit)'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -1018,114 +907,9 @@ const BillingPage = () => {
                   </Select>
                 </div>
 
-                {/* Promo Code & Points Section */}
-                <div className="space-y-4 pt-4 border-t border-border">
-                  {/* Promo Code */}
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Promo Code</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Enter code"
-                        value={promoCodeInput}
-                        onChange={e => {
-                          setPromoCodeInput(e.target.value.toUpperCase());
-                          setPromoCodeStatus("none");
-                        }}
-                        className="bg-secondary/30 border-none h-10 rounded-xl"
-                      />
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="h-10 rounded-xl px-4"
-                        disabled={!promoCodeInput || promoCodeStatus === "valid"}
-                        onClick={async () => {
-                          try {
-                            const res = await api.coupons.validate(promoCodeInput, currentSalon.id);
-                            if (res.valid) {
-                              setPromoCodeStatus("valid");
-                              let discount = 0;
-                              if (res.discount_type === 'percentage') {
-                                discount = computedTotalAmount * (res.discount_value / 100);
-                              } else {
-                                discount = res.discount_value;
-                              }
-                              setNewInvoice(prev => ({ ...prev, promoCode: promoCodeInput, promoDiscount: discount }));
-                              toast({ title: "Promo Applied", description: `${res.name} applied successfully.` });
-                            }
-                          } catch (error: any) {
-                            setPromoCodeStatus("invalid");
-                            toast({ title: "Invalid Code", description: error.message || "Invalid or expired promo code.", variant: "destructive" });
-                          }
-                        }}
-                      >
-                        Apply
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Loyalty Points */}
-                  {newInvoice.customerId && newInvoice.customerId !== "walkin" && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center ml-1">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">Loyalty Points</Label>
-                        <span className="text-[10px] font-bold text-accent">
-                          Available: {customers.find(c => c.id === newInvoice.customerId)?.loyalty_points || 0}
-                        </span>
-                      </div>
-                      <div className="flex gap-2 items-center">
-                        <Input
-                          type="number"
-                          placeholder="Points to redeem"
-                          min="0"
-                          max={Math.min(customers.find(c => c.id === newInvoice.customerId)?.loyalty_points || 0, maxPointsAllowed)}
-                          value={newInvoice.pointsUsed || ""}
-                          onChange={e => {
-                            const val = parseInt(e.target.value) || 0;
-                            const maxAllowed = Math.min(customers.find(c => c.id === newInvoice.customerId)?.loyalty_points || 0, maxPointsAllowed);
-                            if (val > maxAllowed) {
-                               toast({ title: "Limit Reached", description: `You can only redeem up to ${maxAllowed} points for this invoice.`, variant: "destructive" });
-                               setNewInvoice(prev => ({ ...prev, pointsUsed: maxAllowed }));
-                            } else {
-                               setNewInvoice(prev => ({ ...prev, pointsUsed: val }));
-                            }
-                          }}
-                          className="bg-secondary/30 border-none h-10 rounded-xl"
-                        />
-                        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                          = RM {pointsDiscount.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {newInvoice.discount > 0 && (
-                  <div className="flex justify-between items-center bg-green-500/10 text-green-700 p-3 rounded-xl mb-2">
-                    <span className="font-bold text-sm">New Member Promo (RM50)</span>
-                    <span className="font-black text-lg">- MYR {newInvoice.discount.toFixed(2)}</span>
-                  </div>
-                )}
-                {newInvoice.promoDiscount > 0 && (
-                  <div className="flex justify-between items-center bg-blue-500/10 text-blue-700 p-2 rounded-xl mb-1">
-                    <span className="font-bold text-xs">Promo Code ({newInvoice.promoCode})</span>
-                    <span className="font-black text-sm">- MYR {newInvoice.promoDiscount.toFixed(2)}</span>
-                  </div>
-                )}
-                {pointsDiscount > 0 && (
-                  <div className="flex justify-between items-center bg-purple-500/10 text-purple-700 p-2 rounded-xl mb-2">
-                    <span className="font-bold text-xs">Points Redeemed ({newInvoice.pointsUsed})</span>
-                    <span className="font-black text-sm">- MYR {pointsDiscount.toFixed(2)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between items-center bg-accent/10 p-3 rounded-xl">
                   <span className="font-bold">Total Amount</span>
-                  <span className="font-black text-accent text-lg">MYR {finalTotalAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-                  <span className="text-lg font-bold text-slate-900">Total Due</span>
-                  <span className="text-lg font-bold text-slate-900">
-                    MYR {Math.max(0, computedTotalAmount - newInvoice.depositPaid - (newInvoice.discount || 0) - (newInvoice.promoDiscount || 0)).toFixed(2)}
-                  </span>
+                  <span className="font-black text-accent text-lg">MYR {computedTotalAmount.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -1249,22 +1033,17 @@ const BillingPage = () => {
                 <div className="w-72 space-y-3">
                   <div className="flex justify-between font-medium text-slate-500">
                     <span>Subtotal</span>
-                    <span>MYR {selectedInvoice.subtotal.toFixed(2)}</span>
+                    <span className="text-slate-700">MYR {selectedInvoice.subtotal.toFixed(2)}</span>
                   </div>
-                  {selectedInvoice.discount > 0 && selectedInvoice.couponCode ? (
-                    <div className="flex justify-between font-medium text-green-600">
-                      <span>Coupon ({selectedInvoice.couponCode})</span>
-                      <span>- MYR {selectedInvoice.discount.toFixed(2)}</span>
-                    </div>
-                  ) : selectedInvoice.discount > 0 ? (
+                  {selectedInvoice.discount > 0 && (
                     <div className="flex justify-between font-medium text-amber-600">
                       <span>Discount</span>
                       <span>- MYR {selectedInvoice.discount.toFixed(2)}</span>
                     </div>
-                  ) : null}
-                  {selectedInvoice.coinValue > 0 && (
-                    <div className="flex justify-between font-medium text-purple-600">
-                      <span>Points Redeemed ({selectedInvoice.coinsUsed + selectedInvoice.loyaltyPointsUsed} pts)</span>
+                  )}
+                  {(selectedInvoice.coinsUsed > 0 || selectedInvoice.loyaltyPointsUsed > 0) && (
+                    <div className="flex justify-between font-medium text-blue-600">
+                      <span>Points ({selectedInvoice.coinsUsed + selectedInvoice.loyaltyPointsUsed})</span>
                       <span>- MYR {selectedInvoice.coinValue.toFixed(2)}</span>
                     </div>
                   )}

@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle, XCircle, ArrowRight, Calendar, User, RefreshCw, Loader2, Clock, MapPin, Sparkles } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowRight, Calendar, User, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import api from '@/services/api';
-import { format } from "date-fns";
+import { api } from '@/services/api';
 
 const PaymentSuccess = () => {
     const [searchParams] = useSearchParams();
@@ -17,8 +16,6 @@ const PaymentSuccess = () => {
     const isSuccess = !statusId || statusId === '1';
     const [verifying, setVerifying] = useState(false);
     const [verified, setVerified] = useState(false);
-    const [bookingDetails, setBookingDetails] = useState<any>(null);
-    const [loadingBooking, setLoadingBooking] = useState(false);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -40,141 +37,63 @@ const PaymentSuccess = () => {
         }
     }, [isSuccess, billcode, bookingId, verified]);
 
-    useEffect(() => {
-        if (isSuccess && bookingId) {
-            setLoadingBooking(true);
-            const firstId = bookingId.split(',')[0].trim();
-            api.bookings.getById(firstId)
-                .then((data: any) => {
-                    setBookingDetails(data);
-                })
-                .catch((err: any) => {
-                    console.error('Failed to fetch booking details:', err);
-                })
-                .finally(() => {
-                    setLoadingBooking(false);
-                });
-        }
-    }, [isSuccess, bookingId]);
-
     return (
-        <div className="min-h-screen bg-[#FDFCFB]">
+        <div className="min-h-screen bg-[#F3EEEA]">
             <Navbar />
 
             <main className="container mx-auto px-4 max-w-3xl pt-32 pb-20 text-center">
-                <div className="bg-white rounded-[3rem] p-8 md:p-14 shadow-sm border border-slate-100 mt-10 space-y-8">
-                    <div className="space-y-4">
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-in zoom-in duration-500 ${isSuccess ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                            {isSuccess ? (
-                                <CheckCircle className="w-10 h-10 text-emerald-600" />
-                            ) : (
-                                <XCircle className="w-10 h-10 text-red-600" />
-                            )}
-                        </div>
-
-                        <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
-                            {isSuccess ? "Appointment Confirmed!" : "Payment Failed!"}
-                        </h1>
-                        <p className="text-base text-slate-400 font-medium max-w-md mx-auto">
-                            {isSuccess ? "Your payment went through and your treatment slot is locked." : "Your transaction could not be processed or was cancelled."}
-                        </p>
+                <div className="bg-white rounded-[2.5rem] p-12 shadow-sm border border-[#1A1A1A]/5 mt-10">
+                    <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 animate-in zoom-in duration-500 ${isSuccess ? 'bg-green-100' : 'bg-red-100'}`}>
+                        {isSuccess ? (
+                            <CheckCircle className="w-12 h-12 text-green-600" />
+                        ) : (
+                            <XCircle className="w-12 h-12 text-red-600" />
+                        )}
                     </div>
 
+                    <h1 className="text-4xl font-['DM_Serif_Display'] text-[#1A1A1A] mb-4">
+                        {isSuccess ? "Payment Successful!" : "Payment Failed!"}
+                    </h1>
+                    <p className="text-xl text-slate-500 font-medium mb-2">
+                        {isSuccess ? "Your transaction has been processed successfully." : "Your transaction could not be processed or was cancelled."}
+                    </p>
+
                     {verifying && (
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50/50 rounded-full border border-blue-100 text-blue-600 mx-auto">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span className="text-xs font-bold uppercase tracking-wider">Verifying transaction...</span>
+                        <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-blue-50 rounded-full border border-blue-100">
+                            <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                            <span className="text-sm font-medium text-blue-600">Verifying your payment...</span>
                         </div>
                     )}
 
-                    {/* Booking Details Card */}
-                    {isSuccess && (loadingBooking ? (
-                        <div className="p-8 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-400 border border-slate-100">
-                            <Loader2 className="w-6 h-6 animate-spin mr-3 text-accent" />
-                            <span className="font-bold text-sm uppercase tracking-wider">Retrieving booking info...</span>
+                    {bookingId && (
+                        <div className="inline-block mt-4 px-6 py-2 bg-slate-50 rounded-full border border-slate-100">
+                            <span className="text-sm font-bold text-slate-400 uppercase tracking-widest mr-2">Reference:</span>
+                            <span className="text-sm font-black text-slate-900">#{bookingId}</span>
                         </div>
-                    ) : bookingDetails ? (
-                        <div className="bg-slate-50/50 rounded-[2rem] border border-slate-100 p-6 md:p-8 text-left space-y-6 animate-in slide-in-from-bottom-2 duration-300">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-accent text-[10px] font-black uppercase tracking-widest">
-                                        <Sparkles className="w-3.5 h-3.5" />
-                                        Bespoke Experience
-                                    </div>
-                                    <h3 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight">
-                                        {bookingDetails.service_name}
-                                    </h3>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-2xl font-black text-slate-900">MYR {bookingDetails.price}</p>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{bookingDetails.duration_minutes} Mins</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-600 text-sm">
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-100 text-slate-500">
-                                            <Calendar className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date & Time</p>
-                                            <p className="font-bold text-slate-800">
-                                                {bookingDetails.booking_date ? format(new Date(bookingDetails.booking_date), "EEEE, d MMMM yyyy") : ""} at {bookingDetails.booking_time?.slice(0, 5)}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {bookingDetails.staff_name && (
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-100 text-slate-500">
-                                                <User className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Specialist</p>
-                                                <p className="font-bold text-slate-800">{bookingDetails.staff_name}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-100 text-slate-500 mt-0.5">
-                                            <MapPin className="w-5 h-5" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Salon Location</p>
-                                            <p className="font-bold text-slate-800 truncate">{bookingDetails.salon_name}</p>
-                                            <p className="text-xs text-slate-400 mt-0.5 truncate">{bookingDetails.salon_address}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ) : null)}
+                    )}
 
                     {isSuccess ? (
-                        <div className="p-6 bg-slate-50/20 rounded-[2rem] border border-slate-100 text-left flex items-start gap-3.5">
-                            <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 flex-shrink-0">
-                                <CheckCircle className="w-5 h-5" />
-                            </div>
-                            <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                                We have sent a confirmation email with all the details of your appointment. You can also view and manage this booking at any time from your dashboard activity history.
+                        <div className="mt-12 p-8 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 text-left space-y-4">
+                            <p className="text-sm text-slate-500 leading-relaxed italic">
+                                {verified
+                                    ? "Your payment has been verified and your booking is confirmed! Check your dashboard for details."
+                                    : "Your session has been logged in our system. We have sent a confirmation email with all the details of your appointment."
+                                }
                             </p>
+                            <div className="flex items-center gap-3 text-xs font-bold text-slate-400 uppercase tracking-tight">
+                                <Calendar className="w-4 h-4" />
+                                <span>Check your dashboard for details</span>
+                            </div>
                         </div>
                     ) : (
-                        <div className="p-6 bg-red-50/20 rounded-[2rem] border border-red-100 text-left flex items-start gap-3.5">
-                            <div className="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center text-red-500 flex-shrink-0">
-                                <XCircle className="w-5 h-5" />
-                            </div>
-                            <p className="text-sm text-red-600 leading-relaxed font-medium">
-                                We could not process your booking because the payment transaction was unsuccessful. Please attempt checkout again or reach out to support.
+                        <div className="mt-12 p-8 bg-red-50/50 rounded-3xl border border-dashed border-red-200 text-left space-y-4">
+                            <p className="text-sm text-red-500/80 leading-relaxed italic font-medium">
+                                We could not complete your booking because the payment failed. Please try again or choose another payment method.
                             </p>
                         </div>
                     )}
 
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
                         {isSuccess ? (
                             <Button asChild className="h-14 px-8 rounded-full bg-[#1A1A1A] text-white hover:bg-black font-bold text-lg">
                                 <Link to="/my-bookings" className="flex items-center gap-2">

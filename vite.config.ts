@@ -24,8 +24,6 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
-          // React MUST be in its own chunk and load first
-          if (id.includes("node_modules/react/") || id.includes("node_modules/react-dom/") || id.includes("node_modules/scheduler/")) return "react-core";
           if (id.includes("recharts")) return "charts";
           if (id.includes("framer-motion")) return "motion";
           if (id.includes("@radix-ui")) return "radix";

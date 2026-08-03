@@ -187,7 +187,7 @@ const normalizeBooking = (booking: any) => {
     return {
         ...booking,
         service_name: parsedServiceName,
-        price: Math.max(0, servicePrice - Number(booking.discount_amount || 0) - Number(booking.coin_currency_value || 0)) || pricePaid || servicePrice,
+        price: servicePrice || pricePaid,
         amount_paid: pricePaid,
         service_price: servicePrice,
         duration_minutes: booking.duration_minutes ?? service.duration_minutes ?? 0,

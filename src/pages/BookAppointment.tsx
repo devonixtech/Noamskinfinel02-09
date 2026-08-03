@@ -169,25 +169,6 @@ const BookAppointment = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Scroll to top on step changes to prevent being stuck at the bottom/footer
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-
-    const scrollTargets = [
-        document.getElementById('app-routes-container'),
-        document.getElementById('mobile-main-content'),
-        document.querySelector('main'),
-        document.querySelector('.overflow-y-auto'),
-        document.querySelector('[data-scroll-container]'),
-    ];
-
-    scrollTargets.forEach((el) => {
-        if (el) el.scrollTop = 0;
-    });
-  }, [step]);
-
   useEffect(() => {
     if (!salonId) {
       toast({ title: "No Salon Selected", description: "Choosing the best for you...", variant: "default" });

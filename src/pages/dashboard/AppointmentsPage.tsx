@@ -496,19 +496,7 @@ export default function AppointmentsPage() {
       serviceName.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
-    
-    // Check if the booking matches the selected date/week depending on viewMode
-    let matchesDate = true;
-    const bDate = new Date(booking.booking_date);
-    if (viewMode === "day") {
-      matchesDate = format(bDate, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
-    } else if (viewMode === "week") {
-      const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
-      const nextWeekStart = addDays(weekStart, 7);
-      matchesDate = bDate >= weekStart && bDate < nextWeekStart;
-    }
-
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus;
   });
 
   const weekDays = Array.from({ length: 7 }, (_, i) =>
@@ -773,7 +761,7 @@ export default function AppointmentsPage() {
             selectedDate={selectedDate}
             onDateSelect={(d) => {
               setSelectedDate(d);
-              setViewMode("day");
+              if (viewMode === "all") setViewMode("day");
             }}
             onBookingClick={(booking) => {
               setSelectedDate(new Date(booking.booking_date));
@@ -807,8 +795,8 @@ export default function AppointmentsPage() {
                   {weekDays.map((day) => (
                     <button
                       key={day.toISOString()}
-                      onClick={() => { setSelectedDate(day); setViewMode("day"); }}
-                      className={`py-4 text-center transition-colors ${isSameDay(day, selectedDate) && viewMode === "day" ? "bg-accent/5" : "hover:bg-secondary/20"}`}
+                      onClick={() => setSelectedDate(day)}
+                      className={`py-4 text-center transition-colors ${isSameDay(day, selectedDate) ? "bg-accent/5" : "hover:bg-secondary/20"}`}
                     >
                       <p className={`text-[10px] font-black uppercase tracking-wider ${isSameDay(day, selectedDate) ? "text-accent" : "text-muted-foreground"}`}>
                         {format(day, "EEE")}

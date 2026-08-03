@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Footer from "@/components/Footer";
 import { getImageUrl } from "@/utils/imageUrl";
+import { cleanStylistNote as getCleanStylistNote } from "@/utils/cleanNotes";
 
 
 interface Booking {
@@ -42,25 +43,7 @@ const MyBookings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const getCleanStylistNote = (rawNotes: string | null): string => {
-    if (!rawNotes) return "";
-    let cleaned = rawNotes;
-    
-    // Remove [GUEST: ... ] pattern
-    cleaned = cleaned.replace(/\[GUEST:\s*.*?\s*\]/g, '');
-    
-    // Remove ITEMS: { ... } pattern
-    cleaned = cleaned.replace(/ITEMS:\s*\{.*?\}/g, '');
-    
-    // Remove [LOYALTY_POINTS_USED: ... ] pattern
-    cleaned = cleaned.replace(/\[LOYALTY_POINTS_USED:\s*.*?\s*\]/g, '');
-    
-    // Clean up remaining whitespaces, newlines, and commas
-    cleaned = cleaned.trim();
-    cleaned = cleaned.replace(/^[\s,;\-\\n]+|[\s,;\-\\n]+$/g, '');
-    
-    return cleaned;
-  };
+
 
   const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<any[]>([]);
@@ -77,6 +60,10 @@ const MyBookings = () => {
   const [comment, setComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewedBookings, setReviewedBookings] = useState<Set<string>>(new Set());
+  const [cancelDialog, setCancelDialog] = useState<{ isOpen: boolean; bookingId: string | null }>({
+    isOpen: false,
+    bookingId: null
+  });
 
   const checkReviews = async (bookingList: Booking[]) => {
     const reviewed = new Set<string>();
@@ -146,10 +133,12 @@ const MyBookings = () => {
     });
   }, [user, authLoading, activeTab]);
 
-  const cancelBooking = async (bookingId: string) => {
+  const confirmCancel = async () => {
+    if (!cancelDialog.bookingId) return;
     try {
-      await api.bookings.update(bookingId, { status: 'cancelled' });
+      await api.bookings.update(cancelDialog.bookingId, { status: 'cancelled' });
       toast({ title: "Booking Cancelled", description: "Updated in local records." });
+      setCancelDialog({ isOpen: false, bookingId: null });
       fetchBookings();
     } catch (error: any) {
       const msg = error.message || "Failed to update record";
@@ -355,7 +344,7 @@ const MyBookings = () => {
                             {(booking.status === 'pending' || booking.status === 'confirmed') && (
                               <Button
                                 variant="outline"
-                                onClick={() => cancelBooking(booking.id)}
+                                onClick={() => setCancelDialog({ isOpen: true, bookingId: booking.id })}
                                 className="h-12 border-2 border-red-50 text-red-500 hover:bg-red-50 hover:text-red-600 hover:border-red-100 rounded-2xl font-bold px-6 transition-colors"
                               >
                                 Cancel
@@ -484,6 +473,22 @@ const MyBookings = () => {
             >
               {submittingReview ? <Loader2 className="w-5 h-5 animate-spin" /> : "Publish Feedback"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={cancelDialog.isOpen} onOpenChange={(open) => !open && setCancelDialog({ isOpen: false, bookingId: null })}>
+        <DialogContent className="rounded-[3rem] border-none shadow-2xl p-10 max-w-sm text-center">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-slate-900 mx-auto">Cancel Appointment</DialogTitle>
+            <DialogDescription className="text-slate-500 font-medium mt-2">
+              Are you sure you want to cancel this appointment? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row gap-3 mt-6 sm:justify-center">
+            <Button variant="outline" onClick={() => setCancelDialog({ isOpen: false, bookingId: null })} className="h-12 rounded-2xl font-bold w-full sm:w-auto">Keep It</Button>
+            <Button onClick={confirmCancel} variant="destructive" className="h-12 rounded-2xl font-bold w-full sm:w-auto">Yes, Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
