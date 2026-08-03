@@ -134,6 +134,7 @@ export default function AppointmentsPage() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [assigningStaff, setAssigningStaff] = useState(false);
   const [statusToSet, setStatusToSet] = useState<string | null>(null);
+  const [cancelDialog, setCancelDialog] = useState<{ isOpen: boolean; bookingId: string | null }>({ isOpen: false, bookingId: null });
 
   const assignStaffToBooking = async (staffId: string) => {
     if (!selectedBooking) return;
@@ -441,6 +442,16 @@ export default function AppointmentsPage() {
         description: error.message || "Failed to update appointment locally",
         variant: "destructive",
       });
+    }
+  };
+
+  const confirmAdminCancel = async () => {
+    if (!cancelDialog.bookingId) return;
+    try {
+      await updateBookingStatus(cancelDialog.bookingId, "cancelled");
+      setCancelDialog({ isOpen: false, bookingId: null });
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -1000,7 +1011,7 @@ export default function AppointmentsPage() {
                                         <CheckCircle className="w-4 h-4 mr-3" />
                                         Confirm Booking
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => updateBookingStatus(booking.id, "cancelled")} className="rounded-xl py-3 font-bold text-red-600 focus:bg-red-50 focus:text-red-700">
+                                      <DropdownMenuItem onClick={() => setCancelDialog({ isOpen: true, bookingId: booking.id })} className="rounded-xl py-3 font-bold text-red-600 focus:bg-red-50 focus:text-red-700">
                                         <XCircle className="w-4 h-4 mr-3" />
                                         Reject Booking
                                       </DropdownMenuItem>
@@ -1300,6 +1311,22 @@ export default function AppointmentsPage() {
             )}
           </DialogContent>
         </Dialog>
+      
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={cancelDialog.isOpen} onOpenChange={(open) => !open && setCancelDialog({ isOpen: false, bookingId: null })}>
+        <DialogContent className="rounded-[3rem] border-none shadow-2xl p-10 max-w-sm text-center">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-slate-900 mx-auto">Cancel Appointment</DialogTitle>
+            <DialogDescription className="text-slate-500 font-medium mt-2">
+              Are you sure you want to cancel this appointment? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row gap-3 mt-6 sm:justify-center">
+            <Button variant="outline" onClick={() => setCancelDialog({ isOpen: false, bookingId: null })} className="h-12 rounded-2xl font-bold w-full sm:w-auto">Keep It</Button>
+            <Button onClick={confirmAdminCancel} variant="destructive" className="h-12 rounded-2xl font-bold w-full sm:w-auto">Yes, Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
       <TreatmentRecordModal
         booking={selectedRecordBooking}
