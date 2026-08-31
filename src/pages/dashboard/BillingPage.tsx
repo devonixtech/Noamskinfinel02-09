@@ -375,6 +375,13 @@ const BillingPage = () => {
   const handleCreateInvoice = async () => {
     if (!currentSalon || invoiceItems.length === 0) return;
 
+    if (newInvoice.customerId === 'walkin' && newInvoice.guestPhone) {
+      if (newInvoice.guestPhone.length < 9 || newInvoice.guestPhone.length > 10) {
+        toast({ title: "Invalid Phone", description: "Enter a valid Malaysian number (9-10 digits)", variant: "destructive" });
+        return;
+      }
+    }
+
     setCreating(true);
     try {
       const mainService = invoiceItems.find(i => i.type === 'service') || invoiceItems[0];
@@ -383,14 +390,17 @@ const BillingPage = () => {
       let finalCustomerId = newInvoice.customerId;
 
       // If it's a new walk-in (no existing customer ID selected), create one in the directory first!
-      if (!finalCustomerId && newInvoice.notes) {
+      if (!finalCustomerId || finalCustomerId === 'walkin') {
+        finalCustomerId = '';
         try {
-          const newCustRes = await api.customerRecords.addCustomer(currentSalon.id, {
-            name: newInvoice.notes,
-            phone: newInvoice.guestPhone
-          });
-          if (newCustRes.success && newCustRes.customer) {
-            finalCustomerId = newCustRes.customer.id;
+          if (newInvoice.notes) {
+            const newCustRes = await api.customerRecords.addCustomer(currentSalon.id, {
+              name: newInvoice.notes,
+              phone: newInvoice.guestPhone
+            });
+            if (newCustRes?.success && newCustRes?.customer) {
+              finalCustomerId = newCustRes.customer.id;
+            }
           }
         } catch (e) {
           console.warn("Failed to create shadow customer, proceeding as pure walk-in", e);
@@ -406,7 +416,7 @@ const BillingPage = () => {
         price_paid: computedTotalAmount,
         status: newInvoice.status === 'paid' ? 'completed' : 'confirmed',
         payment_method: newInvoice.paymentMethod,
-        notes: `[GUEST: ${newInvoice.notes || 'Walk-in'} | ${newInvoice.guestPhone || ''} ] ITEMS: ${itemsPayload}`,
+        notes: `[GUEST: ${newInvoice.notes || 'Walk-in'} | +60${newInvoice.guestPhone || ''}] ITEMS: ${itemsPayload}`,
       });
 
       toast({ title: "Invoice Created", description: "Successfully added to ledger" });
@@ -855,12 +865,22 @@ const BillingPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Guest Phone</Label>
-                  <Input
-                    placeholder="+60123456789"
-                    value={newInvoice.guestPhone}
-                    onChange={e => setNewInvoice({ ...newInvoice, guestPhone: e.target.value })}
-                    className="bg-secondary/30 border-none h-12 rounded-xl"
-                  />
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center bg-secondary/50 border-none h-12 rounded-xl px-3 text-sm font-bold text-muted-foreground shrink-0">+60</div>
+                    <Input
+                      placeholder="123456789"
+                      value={newInvoice.guestPhone}
+                      maxLength={10}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setNewInvoice({ ...newInvoice, guestPhone: val });
+                      }}
+                      className="bg-secondary/30 border-none h-12 rounded-xl"
+                    />
+                  </div>
+                  {newInvoice.guestPhone && newInvoice.guestPhone.length > 0 && (newInvoice.guestPhone.length < 9 || newInvoice.guestPhone.length > 10) && (
+                    <p className="text-[10px] text-red-500 font-medium ml-1">Enter a valid Malaysian number (9-10 digits)</p>
+                  )}
                 </div>
               </div>
               <div className="space-y-4">
@@ -914,7 +934,7 @@ const BillingPage = () => {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleCreateInvoice} disabled={creating || invoiceItems.length === 0} className="bg-accent text-white font-black w-full h-12 rounded-xl shadow-lg shadow-accent/20">
+              <Button onClick={handleCreateInvoice} disabled={creating || invoiceItems.length === 0 || (newInvoice.customerId === 'walkin' && newInvoice.guestPhone && (newInvoice.guestPhone.length < 9 || newInvoice.guestPhone.length > 10))} className="bg-accent text-white font-black w-full h-12 rounded-xl shadow-lg shadow-accent/20">
                 {creating ? "Processing..." : "Generate & Post Invoice"}
               </Button>
             </DialogFooter>

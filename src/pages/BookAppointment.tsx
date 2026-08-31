@@ -68,30 +68,82 @@ interface Salon {
   is_active: boolean;
 }
 
-const generateTimeSlots = (businessHours: any, date: Date | undefined): string[] => {
-  if (!businessHours || !date) return [];
-  if (typeof businessHours === 'string') {
-    try { businessHours = JSON.parse(businessHours); } catch { return []; }
+const getMalaysiaDate = (): Date => {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }));
+};
+
+const defaultBusinessHours: Record<string, { open: string; close: string; closed: boolean }> = {
+  monday: { open: "09:00", close: "20:00", closed: false },
+  tuesday: { open: "09:00", close: "20:00", closed: false },
+  wednesday: { open: "09:00", close: "20:00", closed: false },
+  thursday: { open: "09:00", close: "20:00", closed: false },
+  friday: { open: "09:00", close: "20:00", closed: false },
+  saturday: { open: "09:00", close: "20:00", closed: false },
+  sunday: { open: "09:00", close: "20:00", closed: true },
+};
+
+const parseBusinessHours = (businessHours: any): Record<string, { open: string; close: string; closed: boolean }> => {
+  if (!businessHours) return defaultBusinessHours;
+  let hours = businessHours;
+  while (typeof hours === 'string') {
+    try {
+      hours = JSON.parse(hours);
+    } catch {
+      break;
+    }
   }
+  if (!hours || typeof hours !== 'object' || Array.isArray(hours)) return defaultBusinessHours;
+  const merged = { ...defaultBusinessHours };
+  for (const key of Object.keys(defaultBusinessHours)) {
+    const val = hours[key] || hours[key.charAt(0).toUpperCase() + key.slice(1)] || hours[key.toLowerCase()];
+    if (val && typeof val === 'object') {
+      merged[key] = {
+        open: val.open || "09:00",
+        close: val.close || "20:00",
+        closed: Boolean(val.closed)
+      };
+    }
+  }
+  return merged;
+};
 
-  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const dayName = dayNames[date.getDay()];
-  const dayHours = businessHours[dayName.toLowerCase()] || businessHours[dayName];
+const generateTimeSlots = (businessHours: any, date: Date | undefined, durationMinutes: number = 30): string[] => {
+  if (!date) return [];
 
-  if (!dayHours || dayHours.closed) return [];
+  const hours = parseBusinessHours(businessHours);
+
+  const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const dayIndex = date.getDay();
+  const dayName = dayNames[dayIndex];
+  
+  const dayHours = hours[dayName] || hours[dayName.charAt(0).toUpperCase() + dayName.slice(1)];
+
+  if (!dayHours || dayHours.closed) {
+    return [];
+  }
 
   const openTime = dayHours.open || "09:00";
   const closeTime = dayHours.close || "20:00";
+
+  const malaysiaNow = getMalaysiaDate();
+  const isToday = 
+    date.getFullYear() === malaysiaNow.getFullYear() && 
+    date.getMonth() === malaysiaNow.getMonth() && 
+    date.getDate() === malaysiaNow.getDate();
+  const nowMinutes = malaysiaNow.getHours() * 60 + malaysiaNow.getMinutes();
 
   const slots: string[] = [];
   const [openH, openM] = openTime.split(":").map(Number);
   const [closeH, closeM] = closeTime.split(":").map(Number);
   let h = openH, m = openM;
 
-  while (h < closeH || (h === closeH && m < closeM)) {
-    slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-    m += 30;
-    if (m >= 60) { h += 1; m = 0; }
+  while (h < closeH || (h === closeH && m + durationMinutes <= closeM)) {
+    const slotMinutes = h * 60 + m;
+    if (!isToday || slotMinutes > nowMinutes) {
+      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+    m += durationMinutes;
+    if (m >= 60) { h += Math.floor(m / 60); m = m % 60; }
   }
 
   return slots;
@@ -131,7 +183,12 @@ const BookAppointment = () => {
   const [showPayment, setShowPayment] = useState(false);
   const [pendingBookingIds, setPendingBookingIds] = useState<string[]>([]);
 
-  const timeSlots = useMemo(() => generateTimeSlots(salon?.business_hours, selectedDate), [salon?.business_hours, selectedDate]);
+  const selectedDuration = useMemo(() => {
+    if (selectedServices.length === 0) return 30;
+    return Math.max(...selectedServices.map(s => s.duration_minutes || 30));
+  }, [selectedServices]);
+
+  const timeSlots = useMemo(() => generateTimeSlots(salon?.business_hours, selectedDate, selectedDuration), [salon?.business_hours, selectedDate, selectedDuration]);
 
   const [step, setStep] = useState(1); // 1 to 8
 
@@ -205,14 +262,59 @@ const BookAppointment = () => {
   }, [user]);
 
   useEffect(() => {
+    if (step === 4 && !selectedDate && salon) {
+      const now = getMalaysiaDate();
+      const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      for (let i = 0; i < 30; i++) {
+        const checkDate = new Date(baseDate);
+        checkDate.setDate(baseDate.getDate() + i);
+        const hours = parseBusinessHours(salon?.business_hours);
+        const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+        const dayName = dayNames[checkDate.getDay()];
+        const dayHours = hours[dayName];
+        if (!dayHours || dayHours.closed) continue;
+        const slots = generateTimeSlots(salon?.business_hours, checkDate, selectedDuration);
+        if (slots.length > 0) {
+          setSelectedDate(checkDate);
+          break;
+        }
+      }
+    }
+  }, [step, salon, selectedDate, selectedDuration]);
+
+  useEffect(() => {
     const fetchBookedSlots = async () => {
       if (!salonId || !selectedDate) return;
       setLoadingSlots(true);
       try {
         const dateStr = format(selectedDate, "yyyy-MM-dd");
         const bookings = await api.bookings.getAll({ salon_id: salonId, date: dateStr });
-        const booked = bookings.map((b: any) => b.booking_time.substring(0, 5));
-        setBookedSlots(booked);
+        
+        const blockedSlots: string[] = [];
+        const newDur = selectedDuration || 30;
+        
+        for (const b of bookings) {
+          if (b.status === 'cancelled') continue;
+          const timeStr = b.booking_time.substring(0, 5);
+          const [bh, bm] = timeStr.split(':').map(Number);
+          const existingStart = bh * 60 + bm;
+          const existingDuration = b.service?.duration_minutes || b.duration_minutes || 30;
+          const existingEnd = existingStart + existingDuration;
+          
+          for (const slot of timeSlots) {
+            const [sh, sm] = slot.split(':').map(Number);
+            const slotStart = sh * 60 + sm;
+            const slotEnd = slotStart + newDur;
+            
+            if (slotStart < existingEnd && slotEnd > existingStart) {
+              if (!blockedSlots.includes(slot)) {
+                blockedSlots.push(slot);
+              }
+            }
+          }
+        }
+        
+        setBookedSlots(blockedSlots);
       } catch (err) {
         console.error("Error checking availability:", err);
       } finally {
@@ -220,7 +322,7 @@ const BookAppointment = () => {
       }
     };
     fetchBookedSlots();
-  }, [salonId, selectedDate]);
+  }, [salonId, selectedDate, selectedDuration, timeSlots]);
 
   useEffect(() => {
     const fetchAvailableStaff = async () => {
@@ -748,21 +850,35 @@ const BookAppointment = () => {
             {step === 4 && (
               <motion.div key="step4" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-12">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                  <Card className="border-none shadow-sm bg-white rounded-[3rem]  md:p-10 flex justify-center items-center overflow-hidden">
+                  <Card className="border-none shadow-sm bg-white rounded-[3rem] md:p-10 flex justify-center items-center overflow-hidden">
                     <div className="w-full max-w-[350px] md:max-w-none transform scale-90 md:scale-100 origin-top">
                       <Calendar
                         mode="single"
                         selected={selectedDate}
-                        onSelect={setSelectedDate}
+                        onSelect={(newDate) => {
+                          setSelectedDate(newDate);
+                          setSelectedTime("");
+                        }}
                         disabled={(date) => {
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          const compareDate = new Date(date);
-                          compareDate.setHours(0, 0, 0, 0);
-                          return compareDate < today || date.getDay() === 0;
+                          const now = getMalaysiaDate();
+                          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                          const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                          if (compareDate < today) return true;
+                          
+                          const hours = parseBusinessHours(salon?.business_hours);
+                          const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+                          const dayName = dayNames[date.getDay()];
+                          const dayHours = hours[dayName];
+                          if (dayHours && dayHours.closed) return true;
+
+                          if (compareDate.getTime() === today.getTime()) {
+                            const todaySlots = generateTimeSlots(salon?.business_hours, today, selectedDuration);
+                            if (todaySlots.length === 0) return true;
+                          }
+
+                          return false;
                         }}
                         className="mx-auto border border-slate-100 rounded-xl md:border-none p-2 md:p-0"
-
                         classNames={{
                           day_selected: " text-white font-bold rounded-lg",
                           day_today: "border border-[#4A3728] p-2",
@@ -772,35 +888,74 @@ const BookAppointment = () => {
                     </div>
                   </Card>
 
-                  <div className="space-y-8">
-                    <div className="flex items-center gap-3 ml-2">
-                      <Clock className="w-5 h-5 text-accent" />
-                      <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Available Time Slots</Label>
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between ml-2">
+                      <div className="flex items-center gap-3">
+                        <Clock className="w-5 h-5 text-accent" />
+                        <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Available Time Slots</Label>
+                      </div>
+                      {selectedDate && (
+                        <Badge variant="outline" className="font-bold text-xs bg-slate-50 border-slate-200">
+                          {format(selectedDate, "EEE, MMM dd")}
+                        </Badge>
+                      )}
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      {timeSlots.map(time => {
-                        const isBooked = bookedSlots.includes(time);
-                        return (
-                          <button
-                            key={time}
-                            disabled={isBooked}
-                            onClick={() => setSelectedTime(time)}
-                            className={cn(
-                              "h-12 md:h-16 rounded-2xl font-black transition-all text-xs md:text-sm uppercase",
-                              isBooked ? "bg-slate-50 text-slate-200 cursor-not-allowed border border-slate-100" :
-                                selectedTime === time ? "bg-accent text-white shadow-xl shadow-accent/20 scale-105" :
-                                  "bg-white text-slate-900 hover:bg-slate-50 border border-slate-100 shadow-sm"
-                            )}
-                          >
-                            {time}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {selectedTime && (
+
+                    {!selectedDate ? (
+                      <div className="p-8 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/50 text-center flex flex-col items-center justify-center gap-3">
+                        <CalendarIcon className="w-8 h-8 text-slate-400" />
+                        <p className="text-sm font-bold text-slate-700">Select a Date</p>
+                        <p className="text-xs text-slate-400">Please choose a date from the calendar to view available slots.</p>
+                      </div>
+                    ) : loadingSlots ? (
+                      <div className="p-12 flex flex-col items-center justify-center gap-3 text-slate-400">
+                        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                        <p className="text-xs font-bold uppercase tracking-widest">Checking Availability...</p>
+                      </div>
+                    ) : timeSlots.length === 0 ? (
+                      <div className="p-8 rounded-3xl border-2 border-dashed border-amber-200 bg-amber-50/50 text-center flex flex-col items-center justify-center gap-3">
+                        <AlertCircle className="w-8 h-8 text-amber-500" />
+                        <p className="text-sm font-black text-amber-900 uppercase tracking-tight">No Slots Available</p>
+                        <p className="text-xs font-medium text-amber-700 max-w-xs leading-relaxed">
+                          {(() => {
+                            const now = getMalaysiaDate();
+                            const isToday = selectedDate.getFullYear() === now.getFullYear() &&
+                              selectedDate.getMonth() === now.getMonth() &&
+                              selectedDate.getDate() === now.getDate();
+                            if (isToday) {
+                              return "Today's operating hours have ended. Please select an upcoming date on the calendar.";
+                            }
+                            return "The salon is closed or has no available booking slots on this day. Please choose another date.";
+                          })()}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-3 max-h-[340px] overflow-y-auto pr-1">
+                        {timeSlots.map(time => {
+                          const isBooked = bookedSlots.includes(time);
+                          return (
+                            <button
+                              key={time}
+                              disabled={isBooked}
+                              onClick={() => setSelectedTime(time)}
+                              className={cn(
+                                "h-12 md:h-14 rounded-2xl font-black transition-all text-xs md:text-sm uppercase flex items-center justify-center",
+                                isBooked ? "bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-100 line-through" :
+                                  selectedTime === time ? "bg-accent text-white shadow-xl shadow-accent/20 scale-105" :
+                                    "bg-white text-slate-900 hover:bg-slate-50 border border-slate-100 shadow-sm hover:border-accent/40"
+                              )}
+                            >
+                              {time}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {selectedTime && selectedDate && (
                       <div className="p-4 md:p-6 rounded-3xl bg-slate-900 text-white flex justify-between items-center animate-in slide-in-from-bottom-2">
                         <span className="text-[10px] md:text-xs font-black uppercase tracking-widest opacity-60">Selection</span>
-                        <span className="text-sm md:text-lg font-black">{selectedDate ? format(selectedDate, "MMM dd") : ''} at {selectedTime}</span>
+                        <span className="text-sm md:text-lg font-black">{format(selectedDate, "MMM dd")} at {selectedTime}</span>
                       </div>
                     )}
                   </div>

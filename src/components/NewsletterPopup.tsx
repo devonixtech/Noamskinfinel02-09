@@ -122,23 +122,30 @@ const NewsletterPopup = () => {
                                 <div className="space-y-3">
 
                                     {/* WhatsApp Button */}
-                                    <a
-                                        href="https://wa.me/601123198819"
-                                        target="_blank"
+                                    <button
+                                        onClick={() => {
+                                            localStorage.setItem("newsletter_popup_dismissed", "true");
+                                            setIsOpen(false);
+                                            window.open("https://wa.me/601123198819", "_blank");
+                                        }}
                                         className="flex items-center justify-center gap-2 w-full h-12 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full uppercase transition-all"
                                     >
                                         <MessageCircle className="w-4 h-4" />
                                         WhatsApp
-                                    </a>
+                                    </button>
 
                                     {/* Claim Button */}
-                                    <a
-                                        href="/membership"
+                                    <button
+                                        onClick={() => {
+                                            localStorage.setItem("newsletter_popup_dismissed", "true");
+                                            setIsOpen(false);
+                                            window.location.href = "/signup";
+                                        }}
                                         className="flex items-center justify-center gap-2 w-full h-12 bg-black hover:bg-black/90 text-white font-semibold rounded-full uppercase transition-all"
                                     >
                                         <Gift className="w-4 h-4" />
                                         Claim My RM50
-                                    </a>
+                                    </button>
 
                                 </div>
 

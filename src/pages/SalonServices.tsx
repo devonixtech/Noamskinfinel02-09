@@ -200,11 +200,25 @@ export default function SalonServices() {
                         </p>
 
                         <div className="grid grid-cols-1 gap-4 pt-4">
-                            {[
-                                { icon: Phone, label: "Call Us", val: salon.phone || "Not available" },
-                                { icon: Mail, label: "Email", val: salon.email || "Not available" },
-                                { icon: Clock, label: "Timings", val: "09:00 AM - 09:00 PM" }
-                            ].map((item, i) => (
+                            {(() => {
+                                let hours = salon.business_hours;
+                                if (typeof hours === 'string') {
+                                    try { hours = JSON.parse(hours); } catch { hours = null; }
+                                }
+                                const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                                const malaysiaNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }));
+                                const today = dayNames[malaysiaNow.getDay()];
+                                const todayHours = hours?.[today] || hours?.[today.charAt(0).toUpperCase() + today.slice(1)];
+                                const timingText = todayHours && !todayHours.closed 
+                                    ? `${todayHours.open} - ${todayHours.close} (Today)` 
+                                    : "Closed Today";
+                                
+                                return [
+                                    { icon: Phone, label: "Call Us", val: salon.phone || "Not available" },
+                                    { icon: Mail, label: "Email", val: salon.email || "Not available" },
+                                    { icon: Clock, label: "Timings", val: timingText }
+                                ];
+                            })().map((item, i) => (
                                 <div key={i} className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground">
                                         <item.icon className="w-4 h-4" />

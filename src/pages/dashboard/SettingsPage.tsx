@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import { countryCodes } from "@/utils/countryCodes";
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -172,7 +172,8 @@ export default function SettingsPage() {
 
       const defaultHours: Record<string, { open: string; close: string; closed: boolean }> = {};
       DAYS.forEach((day) => {
-        defaultHours[day] = (hours as any)?.[day] || { open: "09:00", close: "20:00", closed: false };
+        const lowerDay = day.toLowerCase();
+        defaultHours[lowerDay] = (hours as any)?.[lowerDay] || (hours as any)?.[day] || { open: "09:00", close: "20:00", closed: false };
       });
       setBusinessHours(defaultHours);
 

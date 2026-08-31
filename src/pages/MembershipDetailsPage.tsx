@@ -12,9 +12,11 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
 
 const MembershipDetailsPage = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     const redeemVouchers = [
         { title: "RM25 OFF", points: "500 Points" },
@@ -50,9 +52,9 @@ const MembershipDetailsPage = () => {
                     Earn points with every treatment and product purchase.<br />Enjoy exclusive rewards as a valued member.
                 </p>
 
-                <Link to="/signup">
+                <Link to={user ? "/dashboard" : "/signup"}>
                     <Button size="lg" className="bg-accent hover:bg-accent/90 text-white px-10 py-6 text-lg rounded-xl shadow-xl shadow-accent/20 transition-all hover:-translate-y-1">
-                        Become a Member
+                        {user ? "View My Membership" : "Become a Member"}
                         <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
                 </Link>
@@ -137,9 +139,9 @@ const MembershipDetailsPage = () => {
                         Sign up today to start earning rewards for your everyday skincare.
                     </p>
                     <div className="flex justify-center">
-                        <Link to="/signup">
+                        <Link to={user ? "/dashboard" : "/signup"}>
                             <Button size="lg" className="bg-accent hover:bg-accent/90 text-white px-10 py-6 text-lg rounded-xl shadow-xl shadow-accent/20 transition-all hover:-translate-y-1">
-                                Become a Member
+                                {user ? "View My Membership" : "Become a Member"}
                                 <ArrowRight className="w-5 h-5 ml-2" />
                             </Button>
                         </Link>
