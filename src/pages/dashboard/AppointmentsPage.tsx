@@ -859,17 +859,18 @@ export default function AppointmentsPage() {
               </Card>
             ) : (
               filteredBookings.map((booking) => {
-                const getDisplayName = () => {
-                  const walkInMatch = booking.notes?.match(/Walk-in:\s*([^|#\n]+)/);
-                  if (walkInMatch && walkInMatch[1].trim() && walkInMatch[1].trim() !== "undefined") return walkInMatch[1].trim();
-                  if (booking.full_name) return booking.full_name;
-                  if (booking.user?.profile?.full_name) return booking.user.profile.full_name;
-                  if (booking.customer?.full_name) return booking.customer.full_name;
-                  if (booking.user_name && booking.user_name !== user?.full_name) return booking.user_name;
-                  if (booking.user?.email) return booking.user.email.split('@')[0];
-                  if (booking.user_type === 'customer') return "Online Customer";
-                  return "Guest Customer";
-                };
+                  const getDisplayName = () => {
+                    const guestMatch = booking.notes?.match(/\[GUEST:\s*([^|]+)/i);
+                    if (guestMatch && guestMatch[1].trim() && guestMatch[1].trim() !== "undefined") return guestMatch[1].trim();
+                    const walkInMatch = booking.notes?.match(/Walk-in:\s*([^|#\n]+)/i);
+                    if (walkInMatch && walkInMatch[1].trim() && walkInMatch[1].trim() !== "undefined") return walkInMatch[1].trim();
+                    if (booking.full_name && booking.full_name !== 'Walk-in') return booking.full_name;
+                    if (booking.user?.profile?.full_name && booking.user.profile.full_name !== 'Walk-in') return booking.user.profile.full_name;
+                    if (booking.customer?.full_name && booking.customer.full_name !== 'Walk-in') return booking.customer.full_name;
+                    if (booking.user_name && booking.user_name !== 'Walk-in' && booking.user_name !== user?.full_name) return booking.user_name;
+                    if (booking.user?.email && !booking.user.email.endsWith('.local')) return booking.user.email.split('@')[0];
+                    return "Guest Customer";
+                  };
                 const displayName = getDisplayName();
                 
                 return (
@@ -947,20 +948,20 @@ export default function AppointmentsPage() {
                       <div className="flex items-center gap-6 self-end md:self-auto">
                         <div className="text-right">
                           <p className="text-xl font-black text-foreground flex items-center justify-end gap-2">
-                            {booking.discount_amount > 0 && (
+                            {Number(booking.discount_amount || 0) > 0 && (
                               <Badge className="bg-green-500/10 text-green-400 border-none text-[8px] font-black uppercase tracking-tighter">
-                                Discount
+                                -MYR {Number(booking.discount_amount).toFixed(2)}
                               </Badge>
                             )}
-                            MYR {Number(booking.price || 0).toFixed(2)}
+                            MYR {Math.max(0, Number(booking.price || booking.service?.price || 0) - Number(booking.discount_amount || 0)).toFixed(2)}
                           </p>
                           {booking.status === 'completed' || booking.status === 'cancelled' ? (
                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500/80 mt-1 flex justify-end">
                                {booking.status === 'cancelled' ? 'Cancelled' : 'Fully Paid'}
                              </p>
-                          ) : (Number(booking.price || 0) > Number(booking.amount_paid || 0)) ? (
+                          ) : (Math.max(0, Number(booking.price || booking.service?.price || 0) - Number(booking.discount_amount || 0)) > Number(booking.amount_paid || booking.price_paid || 0)) ? (
                              <p className="text-xs font-bold uppercase tracking-widest text-rose-500 mt-1 flex justify-end">
-                               Remaining: MYR {(Number(booking.price || 0) - Number(booking.amount_paid || 0)).toFixed(2)}
+                               Remaining: MYR {(Math.max(0, Number(booking.price || booking.service?.price || 0) - Number(booking.discount_amount || 0)) - Number(booking.amount_paid || booking.price_paid || 0)).toFixed(2)}
                              </p>
                           ) : (
                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500/80 mt-1 flex justify-end">
@@ -1255,9 +1256,16 @@ export default function AppointmentsPage() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Pricing</p>
-                      <p className="font-bold flex items-center gap-2 text-emerald-600">
-                        MYR {Number(selectedDetailBooking.price || 0).toFixed(2)}
-                      </p>
+                      <div className="flex flex-col">
+                        <p className="font-bold flex items-center gap-2 text-emerald-600">
+                          MYR {Math.max(0, Number(selectedDetailBooking.price || selectedDetailBooking.service?.price || 0) - Number(selectedDetailBooking.discount_amount || 0)).toFixed(2)}
+                        </p>
+                        {Number(selectedDetailBooking.discount_amount || 0) > 0 && (
+                          <span className="text-[10px] text-muted-foreground line-through">
+                            Original: MYR {Number(selectedDetailBooking.price || selectedDetailBooking.service?.price || 0).toFixed(2)} (Saved RM {Number(selectedDetailBooking.discount_amount).toFixed(2)})
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   

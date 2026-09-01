@@ -252,11 +252,16 @@ const BookAppointment = () => {
 
   useEffect(() => {
     if (user) {
+      let rawPhone = (user.phone || "").trim();
+      if (rawPhone.startsWith("+60")) rawPhone = rawPhone.substring(3);
+      else if (rawPhone.startsWith("60") && rawPhone.length > 9) rawPhone = rawPhone.substring(2);
+      else if (rawPhone.startsWith("0") && rawPhone.length > 9) rawPhone = rawPhone.substring(1);
+
       setMemberDetails(prev => ({
         ...prev,
         fullName: prev.fullName || user.full_name || "",
         email: prev.email || user.email || "",
-        phone: prev.phone || user.phone || ""
+        phone: prev.phone || rawPhone
       }));
     }
   }, [user]);
@@ -439,7 +444,18 @@ const BookAppointment = () => {
         // We use the first booking ID as reference, or join them
         const referenceId = bookingIds.join(',');
         const depositAmount = paymentOption === 'deposit' && finalPrice > 100 ? 100 : finalPrice;
-        const response = await api.toyyibpay.createBill({ booking_id: referenceId, payment_type: paymentOption, amount: depositAmount });
+        const fullPhone = memberDetails.phone.startsWith("+")
+          ? memberDetails.phone
+          : `+60${memberDetails.phone.replace(/^0+/, '')}`;
+
+        const response = await api.toyyibpay.createBill({
+          booking_id: referenceId,
+          payment_type: paymentOption,
+          amount: depositAmount,
+          customer_name: memberDetails.fullName,
+          customer_email: memberDetails.email,
+          customer_phone: fullPhone
+        });
 
         if (response?.payment_url) {
           window.location.href = response.payment_url;
@@ -469,16 +485,25 @@ const BookAppointment = () => {
     const couponDiscount = appliedCoupon ? appliedCoupon.discount : 0;
     const coinDiscount = calculateCoinDiscount();
     const finalPriceTotal = Math.max(0, subtotal - couponDiscount - coinDiscount);
-
     const isPayingNow = calculateTotal() > 0;
+
+    const fullPhone = memberDetails.phone.startsWith("+")
+      ? memberDetails.phone
+      : `+60${memberDetails.phone.replace(/^0+/, '')}`;
+
     const bookingPayload = {
       user_id: user?.id,
       salon_id: salonId,
       staff_id: selectedStaffId,
       booking_date: format(selectedDate!, "yyyy-MM-dd"),
       booking_time: selectedTime,
-      notes: `[GUEST: ${memberDetails.fullName} | ${memberDetails.phone}] ${notes}`.trim(),
-      status: isPayingNow ? "pending" : "confirmed",
+      customer_name: memberDetails.fullName,
+      customer_email: memberDetails.email,
+      customer_phone: fullPhone,
+      email: memberDetails.email,
+      phone: fullPhone,
+      notes: `[GUEST: ${memberDetails.fullName} | ${memberDetails.email} | ${fullPhone}] ${notes}`.trim(),
+      status: isPayingNow ? "payment_pending" : "confirmed",
       use_coins: useCoins,
       price_paid: 0,
       discount_amount: couponDiscount,
@@ -599,6 +624,16 @@ const BookAppointment = () => {
     // Simple email valid check
     if (!memberDetails.email.includes('@')) {
       toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return false;
+    }
+    // Malaysian phone validation (9 to 10 digits without +60 prefix)
+    const phoneDigits = memberDetails.phone.replace(/[^0-9]/g, '');
+    if (phoneDigits.length < 9 || phoneDigits.length > 10) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Please enter a valid Malaysian phone number (9-10 digits, e.g. 12 345 6789).",
+        variant: "destructive"
+      });
       return false;
     }
     return true;
@@ -871,11 +906,6 @@ const BookAppointment = () => {
                           const dayHours = hours[dayName];
                           if (dayHours && dayHours.closed) return true;
 
-                          if (compareDate.getTime() === today.getTime()) {
-                            const todaySlots = generateTimeSlots(salon?.business_hours, today, selectedDuration);
-                            if (todaySlots.length === 0) return true;
-                          }
-
                           return false;
                         }}
                         className="mx-auto border border-slate-100 rounded-xl md:border-none p-2 md:p-0"
@@ -996,12 +1026,30 @@ const BookAppointment = () => {
                     </div>
                     <div className="space-y-3">
                       <Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Phone Number</Label>
-                      <Input
-                        value={memberDetails.phone}
-                        onChange={(e) => setMemberDetails({ ...memberDetails, phone: e.target.value })}
-                        className="h-14 md:h-16 rounded-2xl bg-white border-2 border-slate-100 focus:border-accent px-4 md:px-6 font-bold text-sm md:text-base"
-                        placeholder="01X-XXX XXXX"
-                      />
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center bg-slate-100 border-2 border-slate-100 h-14 md:h-16 rounded-2xl px-4 md:px-5 font-bold text-sm md:text-base text-slate-700 shrink-0 select-none">
+                          +60
+                        </div>
+                        <Input
+                          value={memberDetails.phone}
+                          maxLength={10}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            let clean = val;
+                            if (clean.startsWith("60") && clean.length > 9) {
+                              clean = clean.substring(2);
+                            } else if (clean.startsWith("0") && clean.length > 9) {
+                              clean = clean.substring(1);
+                            }
+                            setMemberDetails({ ...memberDetails, phone: clean });
+                          }}
+                          className="h-14 md:h-16 rounded-2xl bg-white border-2 border-slate-100 focus:border-accent px-4 md:px-6 font-bold text-sm md:text-base flex-1"
+                          placeholder="12 345 6789"
+                        />
+                      </div>
+                      {memberDetails.phone && memberDetails.phone.length > 0 && (memberDetails.phone.length < 9 || memberDetails.phone.length > 10) && (
+                        <p className="text-xs text-red-500 font-medium ml-1">Please enter a valid Malaysian number (9-10 digits, e.g. 12 345 6789)</p>
+                      )}
                     </div>
                     <div className="space-y-3">
                       <Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Additional Notes</Label>
@@ -1017,7 +1065,16 @@ const BookAppointment = () => {
 
                 <div className="flex gap-4">
                   <Button onClick={() => setStep(4)} variant="outline" className="h-14 md:h-20 rounded-[2.5rem] px-6 md:px-12 font-black uppercase tracking-widest text-xs md:text-sm">Back</Button>
-                  <Button onClick={() => setStep(6)} className="flex-1 h-14 md:h-20 rounded-[2.5rem] bg-slate-900 text-white font-black text-sm md:text-lg shadow-xl uppercase">Review & Policy</Button>
+                  <Button
+                    onClick={() => {
+                      if (validateMemberDetails()) {
+                        setStep(6);
+                      }
+                    }}
+                    className="flex-1 h-14 md:h-20 rounded-[2.5rem] bg-slate-900 text-white font-black text-sm md:text-lg shadow-xl uppercase"
+                  >
+                    Review & Policy
+                  </Button>
                 </div>
               </motion.div>
             )}
@@ -1167,11 +1224,14 @@ const BookAppointment = () => {
                         </Badge>
                       </div>
 
-                      <button
-                        onClick={() => setUseCoins(!useCoins)}
-                        disabled={userCoins < coinSettings.min_redemption}
+                      <div
+                        onClick={() => {
+                          if (userCoins >= coinSettings.min_redemption) {
+                            setUseCoins(!useCoins);
+                          }
+                        }}
                         className={cn(
-                          "w-full h-14 md:h-16 rounded-2xl border-2 transition-all flex items-center justify-between px-4 md:px-6",
+                          "w-full h-14 md:h-16 rounded-2xl border-2 transition-all flex items-center justify-between px-4 md:px-6 cursor-pointer",
                           useCoins
                             ? "bg-accent/10 border-accent text-accent"
                             : "bg-white border-slate-100 text-slate-900 hover:border-slate-200",
@@ -1186,10 +1246,11 @@ const BookAppointment = () => {
                         </div>
                         <Switch
                           checked={useCoins}
+                          onCheckedChange={(checked) => setUseCoins(checked)}
                           disabled={userCoins < coinSettings.min_redemption}
                           className="data-[state=checked]:bg-accent"
                         />
-                      </button>
+                      </div>
 
                       {userCoins < coinSettings.min_redemption ? (
                         <p className="text-[10px] font-bold text-red-500 uppercase tracking-tight italic ml-1">

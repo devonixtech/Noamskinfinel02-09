@@ -493,11 +493,14 @@ export default function DashboardHome() {
                           <Avatar className="w-14 h-14 rounded-xl border border-border shadow-sm">
                             <AvatarFallback className="bg-[#55402f] text-white font-bold text-lg">
                               {(() => {
-                                const walkInMatch = booking.notes?.match(/Walk-in:\s*([^|#\n]+)/);
+                                const guestMatch = booking.notes?.match(/\[GUEST:\s*([^|]+)/i);
+                                if (guestMatch && guestMatch[1].trim()) return guestMatch[1].trim().charAt(0).toUpperCase();
+                                const walkInMatch = booking.notes?.match(/Walk-in:\s*([^|#\n]+)/i);
                                 if (walkInMatch && walkInMatch[1].trim() && walkInMatch[1].trim() !== "undefined") {
                                   return walkInMatch[1].trim().charAt(0).toUpperCase();
                                 }
-                                return (booking.user_name || "G").charAt(0).toUpperCase();
+                                const name = booking.full_name || booking.user?.profile?.full_name || booking.customer?.full_name || booking.user_name;
+                                return (name || "G").charAt(0).toUpperCase();
                               })()}
                             </AvatarFallback>
                           </Avatar>
@@ -505,25 +508,27 @@ export default function DashboardHome() {
                             <div className="flex items-center gap-2">
                               <h4 className="font-bold text-foreground text-base">
                                 {(() => {
-                                  const walkInMatch = booking.notes?.match(/Walk-in:\s*([^|#\n]+)/);
+                                  const guestMatch = booking.notes?.match(/\[GUEST:\s*([^|]+)/i);
+                                  if (guestMatch && guestMatch[1].trim() && guestMatch[1].trim() !== "undefined") {
+                                    return guestMatch[1].trim();
+                                  }
+                                  const walkInMatch = booking.notes?.match(/Walk-in:\s*([^|#\n]+)/i);
                                   if (walkInMatch && walkInMatch[1].trim() && walkInMatch[1].trim() !== "undefined") {
                                     return walkInMatch[1].trim();
                                   }
-
-                                  if (booking.user_type === 'customer') {
-                                    return "Online service booking";
+                                  if (booking.full_name && booking.full_name !== 'Walk-in') return booking.full_name;
+                                  if (booking.user?.profile?.full_name && booking.user.profile.full_name !== 'Walk-in') return booking.user.profile.full_name;
+                                  if (booking.customer?.full_name && booking.customer.full_name !== 'Walk-in') return booking.customer.full_name;
+                                  if (booking.user_name && booking.user_name !== 'Walk-in' && booking.user_name !== user?.full_name) return booking.user_name;
+                                  if (booking.user?.email && !booking.user.email.endsWith('.local')) {
+                                    return booking.user.email.split('@')[0];
                                   }
-
-                                  if (booking.user_name && (booking.user_id === user?.id || booking.user_name === user?.full_name)) {
-                                    return "Walk-in Customer";
-                                  }
-
-                                  return booking.user_name || "Guest";
+                                  return "Guest Customer";
                                 })()}
                               </h4>
-                              {booking.notes?.includes("Walk-in:") && (
+                              {(booking.notes?.includes("Walk-in:") || booking.notes?.includes("[GUEST:")) && (
                                 <Badge className="bg-muted text-muted-foreground border-none text-[8px] font-bold uppercase tracking-widest px-1.5 h-4">
-                                  Walk-in
+                                  {booking.notes?.includes("Walk-in:") ? "Walk-in" : "Guest"}
                                 </Badge>
                               )}
                             </div>
