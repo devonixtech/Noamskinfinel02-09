@@ -228,6 +228,18 @@ export default function CustomersPage() {
   const handleAddCustomer = async () => {
     if (!addFormData.full_name || !currentSalon) return;
 
+    const cleanPhone = (addFormData.phone || '').replace(/[^0-9]/g, '');
+    if (cleanPhone && (cleanPhone.length < 9 || cleanPhone.length > 10)) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Please enter a valid 9 to 10 digit Malaysian phone number (e.g. 12 345 6789).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formattedPhone = cleanPhone ? `+60${cleanPhone}` : '';
+
     setAdding(true);
     try {
       // Manual creation for walk-in via API
@@ -238,7 +250,8 @@ export default function CustomersPage() {
         status: "completed",
         booking_date: new Date().toISOString().split('T')[0],
         booking_time: "12:00",
-        notes: `Manual Customer: ${addFormData.full_name}, Phone: ${addFormData.phone}`
+        customer_phone: formattedPhone || null,
+        notes: `Manual Customer: ${addFormData.full_name}${formattedPhone ? ', Phone: ' + formattedPhone : ''}`
       });
 
       toast({
@@ -908,14 +921,52 @@ export default function CustomersPage() {
                   onChange={(e) => setAddFormData({ ...addFormData, full_name: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  placeholder="Enter phone number"
-                  value={addFormData.phone}
-                  onChange={(e) => setAddFormData({ ...addFormData, phone: e.target.value })}
-                />
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="phone">Phone Number (Optional)</Label>
+                  {addFormData.phone && (
+                    <span className={`text-[10px] font-bold ${
+                      addFormData.phone.length >= 9 && addFormData.phone.length <= 10
+                        ? 'text-emerald-500'
+                        : 'text-amber-500'
+                    }`}>
+                      {addFormData.phone.length >= 9 && addFormData.phone.length <= 10
+                        ? '✓ Valid'
+                        : `${addFormData.phone.length}/10 digits`}
+                    </span>
+                  )}
+                </div>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 flex items-center gap-1.5 pointer-events-none text-muted-foreground font-bold text-sm select-none border-r border-border/50 pr-2.5">
+                    <span className="text-base leading-none">🇲🇾</span>
+                    <span className="text-foreground font-black text-xs">+60</span>
+                  </div>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="12 345 6789"
+                    value={addFormData.phone}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/[^0-9]/g, '');
+                      if (val.startsWith('60')) val = val.substring(2);
+                      if (val.startsWith('0')) val = val.substring(1);
+                      val = val.slice(0, 10);
+                      setAddFormData({ ...addFormData, phone: val });
+                    }}
+                    className={`pl-20 h-10 bg-secondary/30 border-border/60 focus:bg-card text-foreground font-medium rounded-xl transition-all ${
+                      addFormData.phone && (addFormData.phone.length < 9 || addFormData.phone.length > 10)
+                        ? 'border-amber-500/60 focus-visible:ring-amber-500/30'
+                        : ''
+                    }`}
+                    maxLength={10}
+                  />
+                </div>
+                {addFormData.phone && (addFormData.phone.length < 9 || addFormData.phone.length > 10) && (
+                  <p className="text-[10px] text-amber-500 font-medium pl-1">
+                    Enter 9 to 10 digits (e.g. 12 345 6789)
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email (Optional)</Label>

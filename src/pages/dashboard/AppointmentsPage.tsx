@@ -367,6 +367,18 @@ export default function AppointmentsPage() {
       return;
     }
 
+    const cleanPhone = (newBooking.customerPhone || '').replace(/[^0-9]/g, '');
+    if (cleanPhone && (cleanPhone.length < 9 || cleanPhone.length > 10)) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Please enter a valid 9 to 10 digit Malaysian phone number (e.g. 12 345 6789).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formattedPhone = cleanPhone ? `+60${cleanPhone}` : '';
+
     setCreatingBooking(true);
     try {
       // Dynamic Conflict Check for selected date
@@ -437,8 +449,8 @@ export default function AppointmentsPage() {
         booking_date: newBooking.date,
         booking_time: newBooking.time,
         customer_name: newBooking.customerName,
-        customer_phone: newBooking.customerPhone,
-        notes: `Walk-in: ${newBooking.customerName}${newBooking.customerPhone ? ' | ' + newBooking.customerPhone : ''}${newBooking.notes ? ' | ' + newBooking.notes : ''}`,
+        customer_phone: formattedPhone || null,
+        notes: `Walk-in: ${newBooking.customerName}${formattedPhone ? ' | ' + formattedPhone : ''}${newBooking.notes ? ' | ' + newBooking.notes : ''}`,
         status: "confirmed",
       });
 
@@ -448,11 +460,11 @@ export default function AppointmentsPage() {
       });
 
       // Quick WhatsApp Confirmation
-      if (newBooking.customerPhone) {
+      if (formattedPhone) {
         const salonInfo = currentSalon;
         const msgBooking = {
           user_name: newBooking.customerName,
-          user_phone: newBooking.customerPhone,
+          user_phone: formattedPhone,
           booking_date: newBooking.date,
           booking_time: newBooking.time,
           service_name: availableServices.find(s => s.id === newBooking.serviceId)?.name || 'Service'
@@ -745,13 +757,51 @@ export default function AppointmentsPage() {
                         onChange={e => setNewBooking({ ...newBooking, customerName: e.target.value })}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Phone (Optional)</Label>
-                      <Input
-                        placeholder="Phone number"
-                        value={newBooking.customerPhone}
-                        onChange={e => setNewBooking({ ...newBooking, customerPhone: e.target.value })}
-                      />
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-sm font-semibold text-foreground">Phone (Optional)</Label>
+                        {newBooking.customerPhone && (
+                          <span className={`text-[10px] font-bold ${
+                            newBooking.customerPhone.length >= 9 && newBooking.customerPhone.length <= 10
+                              ? 'text-emerald-400'
+                              : 'text-amber-400'
+                          }`}>
+                            {newBooking.customerPhone.length >= 9 && newBooking.customerPhone.length <= 10
+                              ? '✓ Valid'
+                              : `${newBooking.customerPhone.length}/10 digits`}
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative flex items-center">
+                        <div className="absolute left-3 flex items-center gap-1.5 pointer-events-none text-muted-foreground font-bold text-sm select-none border-r border-border/50 pr-2.5">
+                          <span className="text-base leading-none">🇲🇾</span>
+                          <span className="text-foreground font-black text-xs">+60</span>
+                        </div>
+                        <Input
+                          type="tel"
+                          inputMode="numeric"
+                          placeholder="12 345 6789"
+                          value={newBooking.customerPhone}
+                          onChange={(e) => {
+                            let val = e.target.value.replace(/[^0-9]/g, '');
+                            if (val.startsWith('60')) val = val.substring(2);
+                            if (val.startsWith('0')) val = val.substring(1);
+                            val = val.slice(0, 10);
+                            setNewBooking({ ...newBooking, customerPhone: val });
+                          }}
+                          className={`pl-20 h-11 bg-secondary/30 border-border/60 focus:bg-card text-foreground font-medium rounded-xl transition-all ${
+                            newBooking.customerPhone && (newBooking.customerPhone.length < 9 || newBooking.customerPhone.length > 10)
+                              ? 'border-amber-500/60 focus-visible:ring-amber-500/30'
+                              : ''
+                          }`}
+                          maxLength={10}
+                        />
+                      </div>
+                      {newBooking.customerPhone && (newBooking.customerPhone.length < 9 || newBooking.customerPhone.length > 10) && (
+                        <p className="text-[10px] text-amber-400 font-medium pl-1">
+                          Enter 9 to 10 digits (e.g. 12 345 6789)
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label>Service</Label>
