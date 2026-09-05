@@ -323,10 +323,9 @@ export default function AdminDashboardEnhanced() {
         </div>
 
         {/* Global Analytics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: "Total Salons", value: formatCompactNumber(dashboardStats.totalSalons), active: `${dashboardStats.activeSalons} Active`, icon: Building2, color: "text-blue-500", bg: "bg-blue-50" },
-            { label: "Plan Sales", value: `MYR ${formatCompactNumber(dashboardStats.planRevenue)}`, active: "Subscription", icon: Zap, color: "text-indigo-500", bg: "bg-indigo-50" },
             { label: "Service Sales", value: `MYR ${formatCompactNumber(dashboardStats.serviceRevenue)}`, active: "Bookings", icon: Activity, color: "text-emerald-500", bg: "bg-emerald-50" },
             { label: "Product Sales", value: `MYR ${formatCompactNumber(dashboardStats.productRevenue)}`, active: "Retail", icon: Banknote, color: "text-rose-500", bg: "bg-rose-50" },
             { label: "Total Revenue", value: `MYR ${formatCompactNumber(dashboardStats.monthlyRevenue)}`, active: "Gross Intake", icon: BarChart3, color: "text-purple-500", bg: "bg-purple-50" },

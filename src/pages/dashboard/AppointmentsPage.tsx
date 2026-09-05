@@ -20,6 +20,7 @@ import {
   FileText,
   DollarSign,
   Eye,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1196,6 +1197,17 @@ export default function AppointmentsPage() {
                               <DropdownMenuItem 
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  window.open(`/invoices/${booking.id}`, '_blank');
+                                }} 
+                                className="rounded-xl py-3 font-bold text-teal-600 focus:bg-teal-50 cursor-pointer"
+                              >
+                                <Receipt className="w-4 h-4 mr-3" />
+                                View / Print Invoice
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   navigate(`/salon/customers/${booking.user_id}`);
                                 }} 
                                 className="rounded-xl py-3 font-bold"
@@ -1469,7 +1481,15 @@ export default function AppointmentsPage() {
                   )}
                 </div>
                 
-                <div className="p-4 bg-muted/20 border-t border-border/50 flex justify-end">
+                <div className="p-4 bg-muted/20 border-t border-border/50 flex justify-end gap-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.open(`/invoices/${selectedDetailBooking.id}`, '_blank')}
+                    className="rounded-xl font-bold border-accent/30 text-accent hover:bg-accent/10"
+                  >
+                    <Receipt className="w-4 h-4 mr-2" />
+                    View / Print Invoice
+                  </Button>
                   <Button variant="outline" onClick={() => setShowDetailModal(false)} className="rounded-xl font-bold hover:bg-muted">
                     Close
                   </Button>

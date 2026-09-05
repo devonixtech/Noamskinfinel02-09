@@ -276,9 +276,38 @@ const BillingPage = () => {
         
         const guestNameMatch = booking.notes?.match(/\[GUEST:\s*(.*?)\s*\|/);
         const guestPhoneMatch = booking.notes?.match(/\|\s*(.*?)\s*\]/);
+        const walkInMatch = booking.notes?.match(/Walk-in:\s*([^|#\n]+)/i);
+        const walkInPhoneMatch = booking.notes?.match(/\|\s*(\+?\d[\d -]{7,}\d)/);
         
-        const customerName = (guestNameMatch ? guestNameMatch[1] : null) || booking.customer_name || booking.user?.profile?.full_name || 'Walk-in';
-        const customerPhone = (guestPhoneMatch ? guestPhoneMatch[1] : null) || booking.customer_phone || booking.user?.profile?.phone || '';
+        let customerName = 'Walk-in';
+        if (walkInMatch && walkInMatch[1]?.trim() && walkInMatch[1].trim() !== 'undefined') {
+          customerName = walkInMatch[1].trim();
+        } else if (guestNameMatch && guestNameMatch[1]?.trim() && guestNameMatch[1].trim() !== 'undefined') {
+          customerName = guestNameMatch[1].trim();
+        } else if (booking.full_name && booking.full_name !== 'Walk-in') {
+          customerName = booking.full_name;
+        } else if (booking.user?.profile?.full_name && booking.user.profile.full_name !== 'Walk-in') {
+          customerName = booking.user.profile.full_name;
+        } else if (booking.customer_name) {
+          customerName = booking.customer_name;
+        } else if (booking.user_name && booking.user_name !== 'Walk-in') {
+          customerName = booking.user_name;
+        }
+
+        let customerPhone = '';
+        if (walkInPhoneMatch && walkInPhoneMatch[1]?.trim()) {
+          customerPhone = walkInPhoneMatch[1].trim();
+        } else if (guestPhoneMatch && guestPhoneMatch[1]?.trim()) {
+          customerPhone = guestPhoneMatch[1].trim();
+        } else if (booking.phone) {
+          customerPhone = booking.phone;
+        } else if (booking.user_phone) {
+          customerPhone = booking.user_phone;
+        } else if (booking.user?.profile?.phone) {
+          customerPhone = booking.user.profile.phone;
+        } else if (booking.customer_phone) {
+          customerPhone = booking.customer_phone;
+        }
 
         return {
           id: invoiceNumber,
