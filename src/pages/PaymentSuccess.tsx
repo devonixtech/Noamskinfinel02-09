@@ -20,12 +20,27 @@ const PaymentSuccess = () => {
     useEffect(() => {
         window.scrollTo(0, 0);
 
+        if (isSuccess && type === 'order') {
+            try {
+                localStorage.removeItem('cart');
+                localStorage.removeItem('salon_cart');
+                window.dispatchEvent(new Event('cart-updated'));
+            } catch (e) {}
+        }
+
         if (isSuccess && billcode && !verified) {
             setVerifying(true);
             api.toyyibpay.verifyPayment({ billcode, reference: bookingId || undefined })
                 .then((res: any) => {
                     if (res?.status === 'completed' || res?.status === 'already_completed') {
                         setVerified(true);
+                        if (type === 'order') {
+                            try {
+                                localStorage.removeItem('cart');
+                                localStorage.removeItem('salon_cart');
+                                window.dispatchEvent(new Event('cart-updated'));
+                            } catch (e) {}
+                        }
                     }
                 })
                 .catch((err: any) => {
@@ -35,7 +50,7 @@ const PaymentSuccess = () => {
                     setVerifying(false);
                 });
         }
-    }, [isSuccess, billcode, bookingId, verified]);
+    }, [isSuccess, billcode, bookingId, verified, type]);
 
     return (
         <div className="min-h-screen bg-[#F3EEEA]">
@@ -76,19 +91,25 @@ const PaymentSuccess = () => {
                         <div className="mt-12 p-8 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 text-left space-y-4">
                             <p className="text-sm text-slate-500 leading-relaxed italic">
                                 {verified
-                                    ? "Your payment has been verified and your booking is confirmed! Check your dashboard for details."
-                                    : "Your session has been logged in our system. We have sent a confirmation email with all the details of your appointment."
+                                    ? (type === 'order'
+                                        ? "Your payment has been verified and your order is confirmed! Check your dashboard for updates."
+                                        : "Your payment has been verified and your booking is confirmed! Check your dashboard for details.")
+                                    : (type === 'order'
+                                        ? "Your order transaction has been recorded. We have sent a confirmation email with all details."
+                                        : "Your session has been logged in our system. We have sent a confirmation email with all the details of your appointment.")
                                 }
                             </p>
                             <div className="flex items-center gap-3 text-xs font-bold text-slate-400 uppercase tracking-tight">
                                 <Calendar className="w-4 h-4" />
-                                <span>Check your dashboard for details</span>
+                                <span>Check your activity history for details</span>
                             </div>
                         </div>
                     ) : (
                         <div className="mt-12 p-8 bg-red-50/50 rounded-3xl border border-dashed border-red-200 text-left space-y-4">
                             <p className="text-sm text-red-500/80 leading-relaxed italic font-medium">
-                                We could not complete your booking because the payment failed. Please try again or choose another payment method.
+                                {type === 'order'
+                                    ? "We could not complete your order because the payment was cancelled or failed. Please try again or choose another payment method."
+                                    : "We could not complete your booking because the payment failed. Please try again or choose another payment method."}
                             </p>
                         </div>
                     )}
@@ -96,8 +117,8 @@ const PaymentSuccess = () => {
                     <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
                         {isSuccess ? (
                             <Button asChild className="h-14 px-8 rounded-full bg-[#1A1A1A] text-white hover:bg-black font-bold text-lg">
-                                <Link to="/my-bookings" className="flex items-center gap-2">
-                                    View My Bookings <ArrowRight className="w-5 h-5" />
+                                <Link to={type === 'order' ? "/my-bookings?tab=orders" : "/my-bookings"} className="flex items-center gap-2">
+                                    {type === 'order' ? "View My Orders" : "View My Bookings"} <ArrowRight className="w-5 h-5" />
                                 </Link>
                             </Button>
                         ) : (

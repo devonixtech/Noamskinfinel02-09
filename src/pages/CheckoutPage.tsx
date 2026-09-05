@@ -44,10 +44,16 @@ const CheckoutPage = () => {
 
     useEffect(() => {
         if (user) {
+            let phoneNum = user.phone || "";
+            if (phoneNum.startsWith("+60")) phoneNum = phoneNum.substring(3);
+            else if (phoneNum.startsWith("60")) phoneNum = phoneNum.substring(2);
+            else if (phoneNum.startsWith("0")) phoneNum = phoneNum.substring(1);
+            phoneNum = phoneNum.replace(/[^0-9]/g, '').slice(0, 10);
+
             setFormData(prev => ({
                 ...prev,
                 email: user.email || "",
-                phone: user.phone || "",
+                phone: phoneNum,
                 firstName: user.full_name?.split(' ')[0] || "",
                 lastName: user.full_name?.split(' ').slice(1).join(' ') || "",
             }));
@@ -111,6 +117,16 @@ const CheckoutPage = () => {
             return;
         }
 
+        const cleanPhone = (formData.phone || '').replace(/[^0-9]/g, '');
+        if (!cleanPhone || cleanPhone.length < 9 || cleanPhone.length > 10) {
+            toast({
+                title: "Invalid Phone Number",
+                description: "Please enter a valid 9 to 10 digit Malaysian phone number.",
+                variant: "destructive"
+            });
+            return;
+        }
+
         // Validation: Shipping address required ONLY when deliveryMethod is 'ship'
         if (deliveryMethod === 'ship' && (!formData.address || !formData.city || !formData.state || !formData.postalCode)) {
             toast({
@@ -123,11 +139,14 @@ const CheckoutPage = () => {
 
         setLoading(true);
         try {
-            // 1. Create the order record first (unpaid/pending)
+            const formattedPhone = `+60${cleanPhone.replace(/^0+/, '')}`;
+
             const orderData = {
+                user_id: user.id,
                 items: cart,
                 total_amount: finalTotal,
                 email: formData.email,
+                phone: formattedPhone,
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 shipping_address: deliveryMethod === 'ship' ? {
@@ -136,21 +155,23 @@ const CheckoutPage = () => {
                     city: formData.city,
                     state: formData.state,
                     postalCode: formData.postalCode,
-                    country: formData.country
+                    country: formData.country,
+                    phone: formattedPhone
                 } : null,
                 delivery_method: deliveryMethod,
                 payment_status: 'pending',
             };
 
-            const response: any = await api.orders.create(orderData);
-            const newOrderId = response?.order?.id || response?.order_id || response?.id;
-
-            if (!newOrderId) throw new Error('Failed to create order.');
-
-            // 2. Redirect to ToyyibPay if price > 0
+            // 1. Redirect to ToyyibPay if price > 0 (order will be created ONLY upon verified payment)
             if (finalTotal > 0) {
                 toast({ title: "Redirecting...", description: "Taking you to ToyyibPay for secure payment." });
-                const toyyibResponse = await api.toyyibpay.createBill({ booking_id: newOrderId }); // Reusing booking_id param as generic reference
+                const toyyibResponse = await api.toyyibpay.createBill({
+                    order_data: orderData,
+                    amount: finalTotal,
+                    customer_name: `${formData.firstName} ${formData.lastName}`.trim(),
+                    customer_email: formData.email,
+                    customer_phone: formattedPhone
+                });
 
                 if (toyyibResponse?.payment_url) {
                     window.location.href = toyyibResponse.payment_url;
@@ -160,7 +181,9 @@ const CheckoutPage = () => {
                 return;
             }
 
-            // 3. If zero amount (somehow), complete immediately
+            // 2. If zero amount (e.g. 100% coupon discount), create order directly
+            const response: any = await api.orders.create(orderData);
+            const newOrderId = response?.order?.id || response?.order_id || response?.id;
             setOrderId(newOrderId);
             setOrderComplete(true);
             clearCart();
@@ -294,13 +317,28 @@ const CheckoutPage = () => {
                                     placeholder="Email address"
                                     className="h-14 border-slate-200 rounded-lg focus:ring-0 focus:border-[#1A1A1A] transition-all bg-white/50"
                                 />
-                                <Input
-                                    name="phone"
-                                    value={formData.phone}
-                                    onChange={handleChange}
-                                    placeholder="Mobile phone number"
-                                    className="h-14 border-slate-200 rounded-lg focus:ring-0 focus:border-[#1A1A1A] transition-all bg-white/50 mt-4"
-                                />
+                                <div className="flex items-center gap-2 mt-4">
+                                    <div className="flex items-center justify-center bg-slate-100 border border-slate-200 h-14 rounded-lg px-4 font-bold text-sm text-slate-700 shrink-0 select-none">
+                                        +60
+                                    </div>
+                                    <Input
+                                        name="phone"
+                                        value={formData.phone}
+                                        maxLength={10}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/[^0-9]/g, '');
+                                            let clean = val;
+                                            if (clean.startsWith("60") && clean.length > 9) {
+                                                clean = clean.substring(2);
+                                            } else if (clean.startsWith("0") && clean.length > 9) {
+                                                clean = clean.substring(1);
+                                            }
+                                            setFormData(prev => ({ ...prev, phone: clean.slice(0, 10) }));
+                                        }}
+                                        placeholder="12 345 6789"
+                                        className="h-14 border-slate-200 rounded-lg focus:ring-0 focus:border-[#1A1A1A] transition-all bg-white/50 flex-1"
+                                    />
+                                </div>
                                 <label className="flex items-center gap-3 mt-4 cursor-pointer group">
                                     <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-[#1A1A1A] focus:ring-0" />
                                     <span className="text-sm text-slate-600">Email me with news and offers</span>
