@@ -1019,7 +1019,7 @@ export default function AppointmentsPage() {
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           {getStatusBadge(booking.status, !!(booking.staff_id || booking.staff_name))}
 
                           <Button
@@ -1036,15 +1036,26 @@ export default function AppointmentsPage() {
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="rounded-xl hover:bg-secondary">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="rounded-xl hover:bg-secondary"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 p-2 rounded-2xl border-none shadow-2xl bg-card">
+                            <DropdownMenuContent 
+                              align="end" 
+                              className="w-56 p-2 rounded-2xl border-none shadow-2xl bg-card"
+                              onClick={(e) => e.stopPropagation()}
+                              onPointerDown={(e) => e.stopPropagation()}
+                            >
                               {(isOwner || isManager) && (
                                 <>
                                   <DropdownMenuItem
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setSelectedBooking(booking);
                                       setStatusToSet('confirmed');
                                       setShowStaffAssignment(true);
@@ -1057,11 +1068,23 @@ export default function AppointmentsPage() {
 
                                   {booking.status === "pending" && (
                                     <>
-                                      <DropdownMenuItem onClick={() => updateBookingStatus(booking.id, "confirmed")} className="rounded-xl py-3 font-bold text-emerald-600 focus:bg-emerald-50 focus:text-emerald-700">
+                                      <DropdownMenuItem 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          updateBookingStatus(booking.id, "confirmed");
+                                        }} 
+                                        className="rounded-xl py-3 font-bold text-emerald-600 focus:bg-emerald-50 focus:text-emerald-700"
+                                      >
                                         <CheckCircle className="w-4 h-4 mr-3" />
                                         Confirm Booking
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => setCancelDialog({ isOpen: true, bookingId: booking.id })} className="rounded-xl py-3 font-bold text-red-600 focus:bg-red-50 focus:text-red-700">
+                                      <DropdownMenuItem 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setCancelDialog({ isOpen: true, bookingId: booking.id });
+                                        }} 
+                                        className="rounded-xl py-3 font-bold text-red-600 focus:bg-red-50 focus:text-red-700"
+                                      >
                                         <XCircle className="w-4 h-4 mr-3" />
                                         Reject Booking
                                       </DropdownMenuItem>
@@ -1070,44 +1093,75 @@ export default function AppointmentsPage() {
                                 </>
                               )}
                               {(isOwner || isManager) && (booking.status === "confirmed" || booking.status === "pending") && (
-                                <DropdownMenuItem onClick={() => updateBookingStatus(booking.id, "completed")} className="rounded-xl py-3 font-bold text-blue-600 focus:bg-blue-50 focus:text-blue-700">
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateBookingStatus(booking.id, "completed");
+                                  }} 
+                                  className="rounded-xl py-3 font-bold text-blue-600 focus:bg-blue-50 focus:text-blue-700"
+                                >
                                   <Star className="w-4 h-4 mr-3" />
                                   Mark as Completed
                                 </DropdownMenuItem>
                               )}
                               {booking.status === "completed" && (
-                                <DropdownMenuItem onClick={() => setSelectedRecordBooking(booking)} className="rounded-xl py-3 font-bold text-blue-600 focus:bg-blue-50">
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedRecordBooking(booking);
+                                  }} 
+                                  className="rounded-xl py-3 font-bold text-blue-600 focus:bg-blue-50"
+                                >
                                   <FileText className="w-4 h-4 mr-3" />
                                   Edit Treatment Record
                                 </DropdownMenuItem>
                               )}
 
                               {(isOwner || isManager) && (Number(booking.price || 0) > Number(booking.amount_paid || 0)) && (
-                                <DropdownMenuItem onClick={() => {
-                                  setSelectedPaymentBooking(booking);
-                                  setPaymentAmountStr((Number(booking.price || 0) - Number(booking.amount_paid || 0)).toFixed(2));
-                                  setShowPaymentModal(true);
-                                }} className="rounded-xl py-3 font-bold text-amber-600 focus:bg-amber-50">
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedPaymentBooking(booking);
+                                    setPaymentAmountStr((Number(booking.price || 0) - Number(booking.amount_paid || 0)).toFixed(2));
+                                    setShowPaymentModal(true);
+                                  }} 
+                                  className="rounded-xl py-3 font-bold text-amber-600 focus:bg-amber-50"
+                                >
                                   <DollarSign className="w-4 h-4 mr-3" />
                                   Collect Remaining Payment
                                 </DropdownMenuItem>
                               )}
 
                               {(isOwner || isManager) && (
-                                <DropdownMenuItem onClick={() => handleScheduleFollowup(booking)} className="rounded-xl py-3 font-bold text-indigo-600 focus:bg-indigo-50">
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleScheduleFollowup(booking);
+                                  }} 
+                                  className="rounded-xl py-3 font-bold text-indigo-600 focus:bg-indigo-50"
+                                >
                                   <Clock className="w-4 h-4 mr-3" />
                                   Schedule Follow-up
                                 </DropdownMenuItem>
                               )}
 
-                              <DropdownMenuItem onClick={() => navigate(`/salon/customers/${booking.user_id}`)} className="rounded-xl py-3 font-bold">
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/salon/customers/${booking.user_id}`);
+                                }} 
+                                className="rounded-xl py-3 font-bold"
+                              >
                                 <User className="w-4 h-4 mr-3" />
                                 View Customer Profile
                               </DropdownMenuItem>
 
                               {booking.user_phone && (
                                 <DropdownMenuItem
-                                  onClick={() => sendAppointmentConfirmation(booking, currentSalon)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    sendAppointmentConfirmation(booking, currentSalon);
+                                  }}
                                   className="rounded-xl py-3 font-bold text-emerald-600 focus:bg-emerald-50"
                                 >
                                   <Phone className="w-4 h-4 mr-3" />
