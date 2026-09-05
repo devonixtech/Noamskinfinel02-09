@@ -174,43 +174,40 @@ export default function CustomerDetailsPage() {
             // Fetch Profile from local API
             const profileData = await api.profiles.getById(userId);
 
-            const bookingsData = await api.bookings.getAll({
-                salon_id: currentSalon.id,
-                user_id: userId
-            });
+            const directName = profileData?.full_name || profileData?.profile?.full_name || '';
+            const directPhone = profileData?.phone || profileData?.profile?.phone || '';
+            const directEmail = profileData?.email || profileData?.profile?.email || profileData?.user?.email || '';
+            const directAvatar = profileData?.avatar_url || profileData?.profile?.avatar_url || null;
 
-            // If profile is thin but bookings have data, enrich it
-            const enrichedProfile = { ...profileData };
-            if (bookingsData && bookingsData.length > 0) {
-                let extractedName = "";
-                let extractedPhone = "";
-                let extractedEmail = "";
+            let finalName = directName;
+            let finalPhone = directPhone;
+            let finalEmail = directEmail;
 
+            // If profile is thin but bookings have data, enrich it only as fallback
+            if (!finalName && bookingsData && bookingsData.length > 0) {
                 for (const b of bookingsData) {
-                    if (!extractedName) {
-                        extractedName = b.full_name || b.user_name;
-                        if (!extractedName && b.notes) {
+                    if (!finalName) {
+                        finalName = b.full_name || b.user_name;
+                        if (!finalName && b.notes) {
                             const walkInMatch = b.notes.match(/(?:Walk-in|Manual Customer):\s*([^|,#\n]+)/);
                             if (walkInMatch && walkInMatch[1].trim() && walkInMatch[1].trim() !== "undefined") {
-                                extractedName = walkInMatch[1].trim();
+                                finalName = walkInMatch[1].trim();
                             }
                         }
                     }
-                    if (!extractedPhone) extractedPhone = b.phone || b.user_phone || b.customer_phone;
-                    if (!extractedEmail) extractedEmail = b.email;
+                    if (!finalPhone) finalPhone = b.phone || b.user_phone || b.customer_phone;
+                    if (!finalEmail) finalEmail = b.email;
                 }
-
-                if (!enrichedProfile.full_name && extractedName) {
-                    enrichedProfile.full_name = extractedName;
-                }
-                
-                if (!enrichedProfile.full_name) {
-                    enrichedProfile.full_name = extractedEmail ? extractedEmail.split('@')[0] : `Client #${userId.substring(0, 4)}`;
-                }
-
-                if (!enrichedProfile.phone) enrichedProfile.phone = extractedPhone;
-                if (!enrichedProfile.email) enrichedProfile.email = extractedEmail;
             }
+
+            const enrichedProfile: CustomerProfile = {
+                id: userId,
+                user_id: userId,
+                full_name: finalName || (finalEmail ? finalEmail.split('@')[0] : `Client #${userId.substring(0, 4)}`),
+                phone: finalPhone || null,
+                email: finalEmail || undefined,
+                avatar_url: directAvatar
+            };
 
             // Fetch CRM extended data
             try {
@@ -219,7 +216,7 @@ export default function CustomerDetailsPage() {
                     setSkinType(crmData.profile.skin_type || "");
                     setAllergies(crmData.profile.allergy_records || "");
                     setSkinIssues(crmData.profile.skin_issues || "");
-                    setDob(crmData.profile.date_of_birth || "");
+                    setDob(crmData.profile.date_of_birth ? crmData.profile.date_of_birth.split('T')[0] : "");
                     setMedicalConditions(crmData.profile.medical_conditions || "");
                     setNotes(crmData.profile.notes || "");
                     setConcernPhotoUrl(crmData.profile.concern_photo_url || "");
@@ -319,29 +316,41 @@ export default function CustomerDetailsPage() {
         if (!userId || !currentSalon) return;
         setLoading(true);
         try {
-            // Update Basic Profile
+            // 1. Update Basic Profile
             await api.profiles.updateById(userId, {
-                ...editProfileData,
+                full_name: editProfileData.full_name.trim(),
+                phone: editProfileData.phone.trim(),
+                email: editProfileData.email.trim(),
+                avatar_url: editProfileData.avatar_url,
                 salon_id: currentSalon.id
             });
 
-            // Update Health Profile
+            // 2. Update Health Profile
             await api.customerRecords.saveProfile({
                 user_id: userId,
                 salon_id: currentSalon.id,
                 skin_type: skinType,
                 allergy_records: allergies,
                 skin_issues: skinIssues,
-                date_of_birth: dob,
+                date_of_birth: dob || null,
                 medical_conditions: medicalConditions,
                 notes: notes,
                 concern_photo_url: concernPhotoUrl
             });
 
+            setProfile(prev => prev ? ({
+                ...prev,
+                full_name: editProfileData.full_name.trim(),
+                phone: editProfileData.phone.trim(),
+                email: editProfileData.email.trim(),
+                avatar_url: editProfileData.avatar_url
+            }) : null);
+
             toast({ title: "Profile Updated", description: "Customer information has been successfully updated." });
             setIsProfileEditDialogOpen(false);
-            fetchData();
+            await fetchData();
         } catch (error: any) {
+            console.error("handleSaveProfile error:", error);
             toast({ title: "Update Failed", description: error.message || "Failed to save profile changes.", variant: "destructive" });
         } finally {
             setLoading(false);
