@@ -1098,7 +1098,7 @@ export default function AppointmentsPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent 
                               align="end" 
-                              className="w-56 p-2 rounded-2xl border-none shadow-2xl bg-card"
+                              className="w-56 p-2 rounded-2xl border border-border/40 shadow-2xl bg-card/95 backdrop-blur-md"
                               onClick={(e) => e.stopPropagation()}
                               onPointerDown={(e) => e.stopPropagation()}
                             >
@@ -1111,7 +1111,7 @@ export default function AppointmentsPage() {
                                       setStatusToSet('confirmed');
                                       setShowStaffAssignment(true);
                                     }}
-                                    className="rounded-xl py-3 font-bold text-amber-600 focus:bg-amber-50 focus:text-amber-700"
+                                    className="rounded-xl py-2.5 font-semibold text-amber-400 hover:bg-amber-500/15 focus:bg-amber-500/15 focus:text-amber-300 cursor-pointer transition-colors"
                                   >
                                     <Users className="w-4 h-4 mr-3" />
                                     Assign Specialist
@@ -1124,7 +1124,7 @@ export default function AppointmentsPage() {
                                           e.stopPropagation();
                                           updateBookingStatus(booking.id, "confirmed");
                                         }} 
-                                        className="rounded-xl py-3 font-bold text-emerald-600 focus:bg-emerald-50 focus:text-emerald-700"
+                                        className="rounded-xl py-2.5 font-semibold text-emerald-400 hover:bg-emerald-500/15 focus:bg-emerald-500/15 focus:text-emerald-300 cursor-pointer transition-colors"
                                       >
                                         <CheckCircle className="w-4 h-4 mr-3" />
                                         Confirm Booking
@@ -1134,7 +1134,7 @@ export default function AppointmentsPage() {
                                           e.stopPropagation();
                                           setCancelDialog({ isOpen: true, bookingId: booking.id });
                                         }} 
-                                        className="rounded-xl py-3 font-bold text-red-600 focus:bg-red-50 focus:text-red-700"
+                                        className="rounded-xl py-2.5 font-semibold text-rose-400 hover:bg-rose-500/15 focus:bg-rose-500/15 focus:text-rose-300 cursor-pointer transition-colors"
                                       >
                                         <XCircle className="w-4 h-4 mr-3" />
                                         Reject Booking
@@ -1149,7 +1149,7 @@ export default function AppointmentsPage() {
                                     e.stopPropagation();
                                     updateBookingStatus(booking.id, "completed");
                                   }} 
-                                  className="rounded-xl py-3 font-bold text-blue-600 focus:bg-blue-50 focus:text-blue-700"
+                                  className="rounded-xl py-2.5 font-semibold text-blue-400 hover:bg-blue-500/15 focus:bg-blue-500/15 focus:text-blue-300 cursor-pointer transition-colors"
                                 >
                                   <Star className="w-4 h-4 mr-3" />
                                   Mark as Completed
@@ -1161,7 +1161,7 @@ export default function AppointmentsPage() {
                                     e.stopPropagation();
                                     setSelectedRecordBooking(booking);
                                   }} 
-                                  className="rounded-xl py-3 font-bold text-blue-600 focus:bg-blue-50"
+                                  className="rounded-xl py-2.5 font-semibold text-blue-400 hover:bg-blue-500/15 focus:bg-blue-500/15 focus:text-blue-300 cursor-pointer transition-colors"
                                 >
                                   <FileText className="w-4 h-4 mr-3" />
                                   Edit Treatment Record
@@ -1176,7 +1176,7 @@ export default function AppointmentsPage() {
                                     setPaymentAmountStr((Number(booking.price || 0) - Number(booking.amount_paid || 0)).toFixed(2));
                                     setShowPaymentModal(true);
                                   }} 
-                                  className="rounded-xl py-3 font-bold text-amber-600 focus:bg-amber-50"
+                                  className="rounded-xl py-2.5 font-semibold text-amber-400 hover:bg-amber-500/15 focus:bg-amber-500/15 focus:text-amber-300 cursor-pointer transition-colors"
                                 >
                                   <DollarSign className="w-4 h-4 mr-3" />
                                   Collect Remaining Payment
@@ -1189,7 +1189,7 @@ export default function AppointmentsPage() {
                                     e.stopPropagation();
                                     handleScheduleFollowup(booking);
                                   }} 
-                                  className="rounded-xl py-3 font-bold text-indigo-600 focus:bg-indigo-50"
+                                  className="rounded-xl py-2.5 font-semibold text-indigo-400 hover:bg-indigo-500/15 focus:bg-indigo-500/15 focus:text-indigo-300 cursor-pointer transition-colors"
                                 >
                                   <Clock className="w-4 h-4 mr-3" />
                                   Schedule Follow-up
@@ -1201,7 +1201,7 @@ export default function AppointmentsPage() {
                                   e.stopPropagation();
                                   window.open(`/invoices/${booking.id}`, '_blank');
                                 }} 
-                                className="rounded-xl py-3 font-bold text-teal-600 focus:bg-teal-50 cursor-pointer"
+                                className="rounded-xl py-2.5 font-semibold text-teal-400 hover:bg-teal-500/15 focus:bg-teal-500/15 focus:text-teal-300 cursor-pointer transition-colors"
                               >
                                 <Receipt className="w-4 h-4 mr-3" />
                                 View / Print Invoice
@@ -1212,7 +1212,7 @@ export default function AppointmentsPage() {
                                   e.stopPropagation();
                                   navigate(`/salon/customers/${booking.user_id}`);
                                 }} 
-                                className="rounded-xl py-3 font-bold"
+                                className="rounded-xl py-2.5 font-semibold text-foreground hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer transition-colors"
                               >
                                 <User className="w-4 h-4 mr-3" />
                                 View Customer Profile
@@ -1224,7 +1224,7 @@ export default function AppointmentsPage() {
                                     e.stopPropagation();
                                     sendAppointmentConfirmation(booking, currentSalon);
                                   }}
-                                  className="rounded-xl py-3 font-bold text-emerald-600 focus:bg-emerald-50"
+                                  className="rounded-xl py-2.5 font-semibold text-emerald-400 hover:bg-emerald-500/15 focus:bg-emerald-500/15 focus:text-emerald-300 cursor-pointer transition-colors"
                                 >
                                   <Phone className="w-4 h-4 mr-3" />
                                   Confirm via WhatsApp
