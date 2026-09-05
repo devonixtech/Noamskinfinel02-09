@@ -630,7 +630,6 @@ export default function SettingsPage() {
                 {[
                   { id: 'email_bookings', label: 'Email for New Bookings', desc: 'Get an alert for every new appointment', checked: notifications.email_bookings },
                   { id: 'email_reminders', label: 'Client Email Reminders', desc: 'Automated reminders 24h before visits', checked: notifications.email_reminders },
-                  { id: 'sms_confirmations', label: 'SMS Confirmations', desc: 'Direct text alerts (Local SMS charges apply)', checked: notifications.sms_confirmations },
                 ].map(item => (
                   <div key={item.id} className="flex items-center justify-between p-6 rounded-2xl bg-white/5 border border-white/5">
                     <div className="space-y-1">
