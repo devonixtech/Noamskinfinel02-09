@@ -192,17 +192,22 @@ export default function AppointmentsPage() {
 
   const handleProcessPayment = async () => {
     if (!selectedPaymentBooking || !paymentAmountStr) return;
+    const amountNum = Number(paymentAmountStr);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast({ title: "Invalid Amount", description: "Please enter a valid payment amount.", variant: "destructive" });
+      return;
+    }
     setProcessingPayment(true);
     try {
-      await api.bookings.addPayment(selectedPaymentBooking.id, Number(paymentAmountStr));
-      toast({ title: "Payment Recorded", description: "Successfully added manual payment." });
+      await api.bookings.addPayment(selectedPaymentBooking.id, amountNum);
+      toast({ title: "Payment Recorded", description: `Successfully recorded payment of MYR ${amountNum.toFixed(2)}.` });
       setShowPaymentModal(false);
       setSelectedPaymentBooking(null);
       setPaymentAmountStr('');
       fetchBookings();
-    } catch (e) {
-      console.error(e);
-      toast({ title: "Error", description: "Failed to record payment", variant: "destructive" });
+    } catch (e: any) {
+      console.error("Payment recording error:", e);
+      toast({ title: "Error", description: e.message || "Failed to record payment", variant: "destructive" });
     } finally {
       setProcessingPayment(false);
     }
@@ -1347,9 +1352,17 @@ export default function AppointmentsPage() {
                 <Input type="number" step="0.01" value={paymentAmountStr} onChange={(e) => setPaymentAmountStr(e.target.value)} />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowPaymentModal(false)}>Cancel</Button>
-              <Button onClick={() => handleRecordPayment(selectedPaymentBooking!.id)}>Record Payment</Button>
+            <DialogFooter className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowPaymentModal(false)} className="rounded-xl font-bold">
+                Cancel
+              </Button>
+              <Button 
+                disabled={processingPayment || !paymentAmountStr || Number(paymentAmountStr) <= 0}
+                onClick={handleProcessPayment} 
+                className="bg-accent text-white font-bold rounded-xl"
+              >
+                {processingPayment ? "Recording..." : "Record Payment"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
