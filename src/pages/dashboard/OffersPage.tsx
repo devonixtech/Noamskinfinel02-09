@@ -277,6 +277,10 @@ const OffersPage = () => {
   const activeOffers = offers.filter(offer => offer.status === "active");
   const expiredAndInactive = offers.filter(offer => offer.status !== "active");
 
+  const totalRedemptions = offers.reduce((acc, o) => acc + (o.usage_count || 0), 0);
+  const sortedOffers = [...offers].sort((a, b) => (b.usage_count || 0) - (a.usage_count || 0));
+  const topPerformer = sortedOffers.length > 0 && (sortedOffers[0].usage_count || 0) > 0 ? sortedOffers[0] : (sortedOffers[0] || null);
+
   const stats = [
     {
       title: "Active Offers",
@@ -285,7 +289,7 @@ const OffersPage = () => {
     },
     {
       title: "Total Redemptions",
-      value: offers.reduce((acc, o) => acc + (o.usage_count || 0), 0).toString(),
+      value: totalRedemptions.toString(),
       icon: Tag
     },
     {
@@ -295,7 +299,7 @@ const OffersPage = () => {
     },
     {
       title: "Top Performer",
-      value: offers.length > 0 ? offers.sort((a, b) => b.usage_count - a.usage_count)[0].code : "None",
+      value: topPerformer && topPerformer.code ? `${topPerformer.code}${topPerformer.usage_count ? ` (${topPerformer.usage_count})` : ''}` : "None",
       icon: Percent
     }
   ];
@@ -536,26 +540,48 @@ const OffersPage = () => {
               <Card className="border-border shadow-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Star className="w-5 h-5" />
+                    <Star className="w-5 h-5 text-amber-500" />
                     Top Performing Offers
                   </CardTitle>
+                  <CardDescription>
+                    Promotions ranked by customer redemption volume
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {offers.sort((a, b) => b.usage_count - a.usage_count).slice(0, 5).map((offer, index) => (
-                      <div key={offer.id} className="flex items-center justify-between">
+                    {sortedOffers.slice(0, 5).map((offer, index) => (
+                      <div key={offer.id} className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center">
-                            <span className="text-xs font-medium text-accent">{index + 1}</span>
+                          <div className="w-7 h-7 rounded-full bg-accent/15 flex items-center justify-center font-black text-xs text-accent">
+                            #{index + 1}
                           </div>
-                          <span className="text-sm font-medium">{offer.title} ({offer.code})</span>
+                          <div>
+                            <span className="text-sm font-bold text-foreground block">{offer.title}</span>
+                            <span className="text-xs font-mono font-bold text-accent">{offer.code}</span>
+                          </div>
                         </div>
-                        <span className="text-sm text-muted-foreground">
-                          {offer.usage_count} uses
-                        </span>
+                        <div className="text-right">
+                          <span className="text-sm font-black text-foreground block">
+                            {offer.usage_count || 0} redemptions
+                          </span>
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                            {offer.type === 'percentage' ? `${offer.value}% OFF` : offer.type === 'fixed' ? `MYR ${offer.value} OFF` : 'BOGO'}
+                          </span>
+                        </div>
                       </div>
                     ))}
-                    {offers.length === 0 && <p className="text-center text-muted-foreground">No data available</p>}
+                    {offers.length === 0 && (
+                      <div className="text-center py-8 space-y-3">
+                        <Gift className="w-10 h-10 text-muted-foreground mx-auto opacity-40" />
+                        <p className="text-sm text-muted-foreground font-medium">No promotional offers created yet.</p>
+                        {(isOwner || isManager) && (
+                          <Button size="sm" onClick={() => setIsAddDialogOpen(true)} className="rounded-xl font-bold bg-accent hover:bg-accent/90 text-white">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create First Offer
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -563,19 +589,36 @@ const OffersPage = () => {
               <Card className="border-border shadow-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Offer Stats
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                    Offer & Campaign Stats
                   </CardTitle>
+                  <CardDescription>
+                    Overview of your promotional campaign performance
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Success Rate</span>
-                      <span className="text-sm font-bold">High</span>
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/20">
+                      <span className="text-sm font-medium text-muted-foreground">Active Campaigns</span>
+                      <span className="text-sm font-black text-foreground">{activeOffers.length} of {offers.length} active</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Total Potential Savings</span>
-                      <span className="text-sm font-bold">Dynamic</span>
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/20">
+                      <span className="text-sm font-medium text-muted-foreground">Total Coupon Redemptions</span>
+                      <span className="text-sm font-black text-accent">{totalRedemptions} bookings</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/20">
+                      <span className="text-sm font-medium text-muted-foreground">Most Redeemed Code</span>
+                      <span className="text-sm font-mono font-black text-foreground">
+                        {topPerformer && (topPerformer.usage_count || 0) > 0 ? `${topPerformer.code} (${topPerformer.usage_count} uses)` : (topPerformer ? `${topPerformer.code} (0 uses)` : 'None')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/20">
+                      <span className="text-sm font-medium text-muted-foreground">Avg. Discount Offer</span>
+                      <span className="text-sm font-black text-foreground">
+                        {offers.length > 0 
+                          ? `${(offers.reduce((acc, o) => acc + (o.value || 0), 0) / offers.length).toFixed(0)}% / MYR` 
+                          : 'N/A'}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
