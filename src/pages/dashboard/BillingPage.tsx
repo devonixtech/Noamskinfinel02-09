@@ -268,8 +268,9 @@ const BillingPage = () => {
         const coinValue = Number(booking.coin_currency_value || 0) * (coinsUsed + loyaltyPointsUsed);
         
         const finalPayable = Math.max(0, totalValue - discount - coinValue);
+        const calculatedAmount = actualPaid > 0 ? actualPaid : finalPayable;
 
-        const isPaid = booking.status === 'completed';
+        const isPaid = booking.status === 'completed' || (booking.status === 'confirmed' && (actualPaid >= finalPayable || finalPayable === 0));
         const isDeposit = booking.status === 'confirmed' && actualPaid > 0 && actualPaid < finalPayable;
         const iscash = !isPaid && !isDeposit && new Date(booking.booking_date) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         
@@ -285,16 +286,16 @@ const BillingPage = () => {
           customer: customerName,
           customerId: booking.user_id,
           service: booking.service_name || booking.service?.name || 'Service',
-          amount: actualPaid || totalValue, // Show what was paid, or what is due
+          amount: calculatedAmount,
           date: booking.booking_date,
           status: isDeposit ? 'deposit' : iscash ? 'cash' : isPaid ? 'paid' : 'pending',
-          paymentMethod: pp?.payment_method || booking.payment_method || 'Cash',
+          paymentMethod: pp?.payment_method || booking.payment_method || (finalPayable === 0 && discount > 0 ? '100% Coupon' : 'Cash'),
           time: booking.booking_time || '00:00',
           customerEmail: pp?.invoice_url ? '' : (booking.customer_email || booking.user?.email || ''),
           customerPhone: customerPhone,
           discount,
-          subtotal: actualPaid || totalValue, // base subtotal for the display
-          totalValue, // keeping track of the actual total for later calculations
+          subtotal: totalValue,
+          totalValue,
           coinsUsed,
           loyaltyPointsUsed,
           coinValue,
