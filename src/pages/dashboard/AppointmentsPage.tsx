@@ -950,18 +950,23 @@ export default function AppointmentsPage() {
                           <p className="text-xl font-black text-foreground flex items-center justify-end gap-2">
                             {Number(booking.discount_amount || 0) > 0 && (
                               <Badge className="bg-green-500/10 text-green-400 border-none text-[8px] font-black uppercase tracking-tighter">
-                                -MYR {Number(booking.discount_amount).toFixed(2)}
+                                -MYR {Number(booking.discount_amount).toFixed(2)} OFF {booking.coupon_code ? `(${booking.coupon_code})` : ''}
                               </Badge>
                             )}
-                            MYR {Math.max(0, Number(booking.price || booking.service?.price || 0) - Number(booking.discount_amount || 0)).toFixed(2)}
+                            MYR {Number(booking.price || 0).toFixed(2)}
                           </p>
+                          {Number(booking.discount_amount || 0) > 0 && (
+                            <span className="text-[10px] text-muted-foreground line-through flex justify-end">
+                              Orig: MYR {Number(booking.original_price || booking.service_price || (Number(booking.price || 0) + Number(booking.discount_amount || 0))).toFixed(2)}
+                            </span>
+                          )}
                           {booking.status === 'completed' || booking.status === 'cancelled' ? (
                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500/80 mt-1 flex justify-end">
                                {booking.status === 'cancelled' ? 'Cancelled' : 'Fully Paid'}
                              </p>
-                          ) : (Math.max(0, Number(booking.price || booking.service?.price || 0) - Number(booking.discount_amount || 0)) > Number(booking.amount_paid || booking.price_paid || 0)) ? (
+                          ) : (Number(booking.price || 0) > Number(booking.amount_paid || booking.price_paid || 0)) ? (
                              <p className="text-xs font-bold uppercase tracking-widest text-rose-500 mt-1 flex justify-end">
-                               Remaining: MYR {(Math.max(0, Number(booking.price || booking.service?.price || 0) - Number(booking.discount_amount || 0)) - Number(booking.amount_paid || booking.price_paid || 0)).toFixed(2)}
+                               Remaining: MYR {(Number(booking.price || 0) - Number(booking.amount_paid || booking.price_paid || 0)).toFixed(2)}
                              </p>
                           ) : (
                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500/80 mt-1 flex justify-end">

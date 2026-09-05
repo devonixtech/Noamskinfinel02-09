@@ -171,25 +171,35 @@ const normalizeBooking = (booking: any) => {
 
     const servicePrice = Number(service.price || 0);
     const pricePaid = Number(booking.price_paid || 0);
+    const discountAmount = Number(booking.discount_amount || 0);
 
     let parsedServiceName = booking.service_name || service.name || booking.service?.title || 'Service';
     let items: any[] = [];
+    let itemsTotal = servicePrice;
     const itemsMatch = booking.notes?.match(/ITEMS:\s*(\{.*\})/);
     if (itemsMatch) {
       try {
-        items = JSON.parse(itemsMatch[1]).items || [];
+        const parsed = JSON.parse(itemsMatch[1]);
+        items = parsed.items || [];
         if (items.length > 0) {
           parsedServiceName = items.length === 1 ? items[0].name : `${items[0].name} + ${items.length - 1} item(s)`;
+          itemsTotal = items.reduce((sum: number, it: any) => sum + (Number(it.price || 0) * Number(it.quantity || 1)), 0);
         }
       } catch (e) {}
     }
 
+    const originalPrice = itemsTotal || servicePrice || (pricePaid + discountAmount);
+    const netPrice = Math.max(0, originalPrice - discountAmount);
+
     return {
         ...booking,
         service_name: parsedServiceName,
-        price: servicePrice || pricePaid,
+        price: netPrice,
+        original_price: originalPrice,
+        discount_amount: discountAmount,
+        coupon_code: booking.coupon_code || null,
         amount_paid: pricePaid,
-        service_price: servicePrice,
+        service_price: originalPrice,
         duration_minutes: booking.duration_minutes ?? service.duration_minutes ?? 0,
         category: booking.category || service.category || null,
         image_url: booking.image_url || service.image_url || null,

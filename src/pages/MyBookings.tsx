@@ -34,6 +34,10 @@ interface Booking {
   salon_city: string;
   category: string;
   image_url?: string;
+  discount_amount?: number;
+  coupon_code?: string;
+  original_price?: number;
+  service_price?: number;
 }
 
 const MyBookings = () => {
@@ -288,9 +292,19 @@ const MyBookings = () => {
 
                         {/* 3. Price & Actions */}
                         <div className="flex items-center justify-between lg:justify-end gap-6 flex-shrink-0 pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-                          <div>
-                            <p className="text-3xl font-black text-slate-900 tracking-tight">MYR {booking.price}</p>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">{booking.duration_minutes} MINS</p>
+                          <div className="text-right">
+                            <p className="text-3xl font-black text-slate-900 tracking-tight">MYR {Number(booking.price || 0).toFixed(2)}</p>
+                            {Number(booking.discount_amount || 0) > 0 && (
+                              <div className="flex flex-col items-end gap-0.5 mt-1">
+                                <span className="text-xs font-bold text-slate-400 line-through">
+                                  MYR {Number(booking.original_price || booking.service_price || (Number(booking.price || 0) + Number(booking.discount_amount || 0))).toFixed(2)}
+                                </span>
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border-none text-[10px] font-black uppercase px-2 py-0.5">
+                                  -MYR {Number(booking.discount_amount).toFixed(2)} OFF {booking.coupon_code ? `(${booking.coupon_code})` : ''}
+                                </Badge>
+                              </div>
+                            )}
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right mt-1">{booking.duration_minutes} MINS</p>
                           </div>
 
                           <div className="flex items-center gap-3">
