@@ -1040,18 +1040,18 @@ export default function AppointmentsPage() {
 
                       <div className="flex items-center gap-6 self-end md:self-auto">
                         <div className="text-right">
-                          <div className="text-xl font-black text-foreground flex items-center justify-end gap-2">
-                            {Number(booking.discount_amount || 0) > 0 && (
-                              <Badge className="bg-green-500/10 text-green-400 border-none text-[8px] font-black uppercase tracking-tighter">
-                                -MYR {Number(booking.discount_amount).toFixed(2)} OFF {booking.coupon_code ? `(${booking.coupon_code})` : ''}
-                              </Badge>
-                            )}
+                          <div className="text-xl font-black text-foreground flex items-center justify-end">
                             MYR {Number(booking.price || 0).toFixed(2)}
                           </div>
                           {Number(booking.discount_amount || 0) > 0 && (
-                            <span className="text-[10px] text-muted-foreground line-through flex justify-end">
-                              Orig: MYR {Number(booking.original_price || booking.service_price || (Number(booking.price || 0) + Number(booking.discount_amount || 0))).toFixed(2)}
-                            </span>
+                            <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5">
+                              <span className="text-muted-foreground line-through">
+                                Orig: MYR {Number(booking.original_price || booking.service_price || (Number(booking.price || 0) + Number(booking.discount_amount || 0))).toFixed(2)}
+                              </span>
+                              <span className="text-emerald-400 font-bold">
+                                (-MYR {Number(booking.discount_amount).toFixed(2)})
+                              </span>
+                            </div>
                           )}
                           {booking.status === 'completed' || booking.status === 'cancelled' ? (
                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500/80 mt-1 flex justify-end">
