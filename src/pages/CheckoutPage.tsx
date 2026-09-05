@@ -69,6 +69,21 @@ const CheckoutPage = () => {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+        if (name === 'postalCode') {
+            const numericVal = value.replace(/[^0-9]/g, '');
+            const maxLen = formData.country === 'Malaysia' ? 5 : (formData.country === 'Singapore' ? 6 : 10);
+            setFormData(prev => ({ ...prev, postalCode: numericVal.slice(0, maxLen) }));
+            return;
+        }
+        if (name === 'country') {
+            const maxLen = value === 'Malaysia' ? 5 : (value === 'Singapore' ? 6 : 10);
+            setFormData(prev => ({ 
+                ...prev, 
+                country: value, 
+                postalCode: prev.postalCode.replace(/[^0-9]/g, '').slice(0, maxLen) 
+            }));
+            return;
+        }
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -128,13 +143,43 @@ const CheckoutPage = () => {
         }
 
         // Validation: Shipping address required ONLY when deliveryMethod is 'ship'
-        if (deliveryMethod === 'ship' && (!formData.address || !formData.city || !formData.state || !formData.postalCode)) {
-            toast({
-                title: "Missing Information",
-                description: "Please fill in all required shipping address details.",
-                variant: "destructive"
-            });
-            return;
+        if (deliveryMethod === 'ship') {
+            if (!formData.address || !formData.city || !formData.state || !formData.postalCode) {
+                toast({
+                    title: "Missing Information",
+                    description: "Please fill in all required shipping address details.",
+                    variant: "destructive"
+                });
+                return;
+            }
+
+            const cleanPostal = (formData.postalCode || '').trim();
+            if (formData.country === 'Malaysia' && !/^[0-9]{5}$/.test(cleanPostal)) {
+                toast({
+                    title: "Invalid Postal Code",
+                    description: "Please enter a valid 5-digit Malaysian postcode (e.g. 50450).",
+                    variant: "destructive"
+                });
+                return;
+            }
+
+            if (formData.country === 'Singapore' && !/^[0-9]{6}$/.test(cleanPostal)) {
+                toast({
+                    title: "Invalid Postal Code",
+                    description: "Please enter a valid 6-digit Singapore postal code (e.g. 123456).",
+                    variant: "destructive"
+                });
+                return;
+            }
+
+            if (cleanPostal.length < 3 || cleanPostal.length > 10) {
+                toast({
+                    title: "Invalid Postal Code",
+                    description: "Please enter a valid postal code.",
+                    variant: "destructive"
+                });
+                return;
+            }
         }
 
         setLoading(true);
@@ -429,13 +474,27 @@ const CheckoutPage = () => {
                                             placeholder="State"
                                             className="h-14 border-slate-200 rounded-lg bg-white/50"
                                         />
-                                        <Input
-                                            name="postalCode"
-                                            value={formData.postalCode}
-                                            onChange={handleChange}
-                                            placeholder="Postcode"
-                                            className="h-14 border-slate-200 rounded-lg bg-white/50"
-                                        />
+                                        <div className="relative">
+                                            <Input
+                                                name="postalCode"
+                                                value={formData.postalCode}
+                                                onChange={handleChange}
+                                                placeholder={formData.country === 'Malaysia' ? "Postcode (5 digits)" : "Postcode"}
+                                                maxLength={formData.country === 'Malaysia' ? 5 : (formData.country === 'Singapore' ? 6 : 10)}
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
+                                                className={`h-14 border-slate-200 rounded-lg bg-white/50 ${
+                                                    formData.postalCode && formData.country === 'Malaysia' && formData.postalCode.length !== 5
+                                                        ? 'border-amber-500 focus-visible:ring-amber-500' 
+                                                        : ''
+                                                }`}
+                                            />
+                                            {formData.postalCode && formData.country === 'Malaysia' && formData.postalCode.length !== 5 && (
+                                                <p className="text-[10px] text-amber-600 font-semibold mt-1 px-1">
+                                                    Must be 5 digits ({formData.postalCode.length}/5)
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 </section>
                             ) : (
