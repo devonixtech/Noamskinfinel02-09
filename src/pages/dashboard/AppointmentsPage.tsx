@@ -593,6 +593,20 @@ export default function AppointmentsPage() {
 
     const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
     return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    // Newest appointments always appear at the top
+    const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    if (createdB !== createdA) {
+      return createdB - createdA;
+    }
+    const dateA = new Date(a.booking_date).getTime();
+    const dateB = new Date(b.booking_date).getTime();
+    if (dateB !== dateA) return dateB - dateA;
+
+    const timeA = a.booking_time || "00:00";
+    const timeB = b.booking_time || "00:00";
+    return timeB.localeCompare(timeA);
   });
 
   const weekDays = Array.from({ length: 7 }, (_, i) =>
