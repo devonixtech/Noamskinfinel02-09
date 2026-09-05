@@ -503,7 +503,7 @@ const BookAppointment = () => {
       email: memberDetails.email,
       phone: fullPhone,
       notes: `[GUEST: ${memberDetails.fullName} | ${memberDetails.email} | ${fullPhone}] ${notes}`.trim(),
-      status: isPayingNow ? "payment_pending" : "confirmed",
+      status: isPayingNow ? "pending" : "confirmed",
       use_coins: useCoins,
       price_paid: 0,
       discount_amount: couponDiscount,

@@ -244,4 +244,9 @@ body {
   .mobileinsight {
     padding-top: 4rem !important
   }
+
+  .videomargin {
+    height: 100% !important;
+    margin-top: 0 !important;
+  }
 }
