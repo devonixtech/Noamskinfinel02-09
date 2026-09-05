@@ -566,17 +566,29 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     {searchResults.customers?.length > 0 && (
                       <div className="mb-2">
                         <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Customers</p>
-                        {searchResults.customers.slice(0, 5).map((customer: any) => (
+                        {searchResults.customers.slice(0, 8).map((customer: any) => (
                           <button
                             key={customer.id}
-                            onClick={() => { navigate(`${basePath}/customers`); setSearchQuery(""); }}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-accent/5 text-sm font-medium text-left transition-colors"
+                            onClick={() => {
+                              if (customer.id || customer.user_id) {
+                                navigate(`${basePath}/customers/${customer.id || customer.user_id}`);
+                              } else {
+                                navigate(`${basePath}/customers`);
+                              }
+                              setSearchQuery("");
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-accent/5 text-sm font-medium text-left transition-colors cursor-pointer"
                           >
-                            <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent">
+                            <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent shrink-0">
                               {customer.name?.[0] || "?"}
                             </div>
-                            <span>{customer.name}</span>
-                            {customer.email && <span className="text-xs text-muted-foreground ml-auto">{customer.email}</span>}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-foreground truncate">{customer.name}</p>
+                              {customer.phone && <p className="text-xs text-muted-foreground">{customer.phone}</p>}
+                            </div>
+                            {customer.email && !customer.email.endsWith('.local') && (
+                              <span className="text-xs text-muted-foreground ml-auto shrink-0">{customer.email}</span>
+                            )}
                           </button>
                         ))}
                       </div>
@@ -584,18 +596,25 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     {searchResults.appointments?.length > 0 && (
                       <div className="mb-2">
                         <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Appointments</p>
-                        {searchResults.appointments.slice(0, 5).map((apt: any) => (
+                        {searchResults.appointments.slice(0, 6).map((apt: any) => (
                           <button
                             key={apt.id}
-                            onClick={() => { navigate(`${basePath}/appointments`); setSearchQuery(""); }}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-accent/5 text-sm font-medium text-left transition-colors"
+                            onClick={() => {
+                              if (apt.user_id) {
+                                navigate(`${basePath}/customers/${apt.user_id}`);
+                              } else {
+                                navigate(`${basePath}/appointments`);
+                              }
+                              setSearchQuery("");
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-accent/5 text-sm font-medium text-left transition-colors cursor-pointer"
                           >
-                            <Calendar className="w-4 h-4 text-muted-foreground" />
-                            <div>
-                              <span>{apt.customer_name || apt.customer}</span>
-                              <span className="text-xs text-muted-foreground ml-2">{apt.service_name || apt.service}</span>
+                            <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-foreground truncate">{apt.customer_name || apt.customer}</p>
+                              <p className="text-xs text-muted-foreground truncate">{apt.service_name || apt.service}</p>
                             </div>
-                            <span className="text-xs text-muted-foreground ml-auto">{apt.time || apt.date}</span>
+                            <span className="text-xs text-muted-foreground ml-auto shrink-0">{apt.time || apt.date || apt.booking_date}</span>
                           </button>
                         ))}
                       </div>
