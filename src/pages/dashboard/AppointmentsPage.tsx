@@ -242,6 +242,20 @@ export default function AppointmentsPage() {
     }
   }, [user, authLoading, navigate]);
 
+  const getBookingDisplayName = (b: any, loggedInUserName?: string) => {
+    if (!b) return "Guest Customer";
+    const guestMatch = b.notes?.match(/\[GUEST:\s*([^|]+)/i);
+    if (guestMatch && guestMatch[1]?.trim() && guestMatch[1].trim() !== "undefined") return guestMatch[1].trim();
+    const walkInMatch = b.notes?.match(/Walk-in:\s*([^|#\n]+)/i);
+    if (walkInMatch && walkInMatch[1]?.trim() && walkInMatch[1].trim() !== "undefined") return walkInMatch[1].trim();
+    if (b.full_name && b.full_name !== 'Walk-in') return b.full_name;
+    if (b.user?.profile?.full_name && b.user.profile.full_name !== 'Walk-in') return b.user.profile.full_name;
+    if (b.customer?.full_name && b.customer.full_name !== 'Walk-in') return b.customer.full_name;
+    if (b.user_name && b.user_name !== 'Walk-in' && b.user_name !== loggedInUserName) return b.user_name;
+    if (b.user?.email && !b.user.email.endsWith('.local')) return b.user.email.split('@')[0];
+    return "Guest Customer";
+  };
+
   const fetchBookings = async () => {
     if (!currentSalon) return;
 
@@ -260,34 +274,43 @@ export default function AppointmentsPage() {
       }
 
       // Using the generic getAll but passing date filters if necessary
-      // Assuming the PHP backend handles start_date/end_date if we pass them
       const data = await api.bookings.getAll({
         salon_id: currentSalon.id,
         ...(startDate && { start_date: startDate }),
         ...(endDate && { end_date: endDate })
       });
 
-      // Enrich data for UI if backend returns flat structure
+      // Enrich data for UI
       const enriched = data.map((b: any) => {
-        // Find if returning customer
         const prevCount = data.filter((prev: any) => prev.user_id === b.user_id && prev.id !== b.id).length;
+        const displayName = getBookingDisplayName(b, user?.full_name);
+        let phone = b.user_phone || b.phone || b.user?.profile?.phone || b.customer?.phone;
+        if (!phone && b.notes) {
+          const phoneMatch = b.notes.match(/(\+?\d[\d -]{7,}\d)/);
+          if (phoneMatch) phone = phoneMatch[1].trim();
+        }
 
         return {
           ...b,
           isReturning: prevCount > 0,
-          service: b.service_name ? {
+          service_name: b.service_name || b.service?.name || "General Service",
+          service: b.service || (b.service_name ? {
             id: b.service_id,
             name: b.service_name,
             price: Number(b.price || 0),
             duration_minutes: Number(b.duration_minutes || 30)
-          } : undefined,
-          customer: b.full_name ? {
-            full_name: b.full_name,
-            phone: b.phone
-          } : undefined,
-          user_name: b.full_name || null,
-          user_phone: b.phone,
-          user_type: b.user_type,
+          } : undefined),
+          staff_name: b.staff_name || b.staff?.display_name || b.staff?.name || null,
+          user_name: displayName,
+          full_name: displayName,
+          user_phone: phone || null,
+          phone: phone || null,
+          customer: {
+            full_name: displayName,
+            phone: phone || null
+          },
+          price: Number(b.price || b.service?.price || 0),
+          duration_minutes: Number(b.duration_minutes || b.service?.duration_minutes || 30),
           amount_paid: Number(b.amount_paid || b.price_paid || 0),
         };
       });
@@ -542,13 +565,31 @@ export default function AppointmentsPage() {
   };
 
   const filteredBookings = bookings.filter((booking) => {
-    const customerName = booking.customer?.full_name || booking.user_name || "";
-    const serviceName = booking.service?.name || booking.service_name || "";
+    const q = searchQuery.trim().toLowerCase();
+
+    const customerName = getBookingDisplayName(booking, user?.full_name).toLowerCase();
+    const serviceName = (booking.service?.name || booking.service_name || "").toLowerCase();
+    const staffName = (booking.staff_name || booking.staff?.display_name || booking.staff?.name || "").toLowerCase();
+    const phone = (booking.user_phone || booking.phone || booking.user?.profile?.phone || booking.customer?.phone || "").toLowerCase();
+    const email = (booking.user?.email || booking.customer?.email || "").toLowerCase();
+    const notes = (booking.notes || "").toLowerCase();
+    const coupon = (booking.coupon_code || "").toLowerCase();
+    const bookingId = (booking.id || "").toLowerCase();
+    const bookingDate = (booking.booking_date || "").toLowerCase();
+    const bookingTime = (booking.booking_time || "").toLowerCase();
 
     const matchesSearch =
-      !searchQuery ||
-      customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      serviceName.toLowerCase().includes(searchQuery.toLowerCase());
+      !q ||
+      customerName.includes(q) ||
+      serviceName.includes(q) ||
+      staffName.includes(q) ||
+      phone.includes(q) ||
+      email.includes(q) ||
+      notes.includes(q) ||
+      coupon.includes(q) ||
+      bookingId.includes(q) ||
+      bookingDate.includes(q) ||
+      bookingTime.includes(q);
 
     const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -903,19 +944,7 @@ export default function AppointmentsPage() {
               </Card>
             ) : (
               filteredBookings.map((booking) => {
-                  const getDisplayName = () => {
-                    const guestMatch = booking.notes?.match(/\[GUEST:\s*([^|]+)/i);
-                    if (guestMatch && guestMatch[1].trim() && guestMatch[1].trim() !== "undefined") return guestMatch[1].trim();
-                    const walkInMatch = booking.notes?.match(/Walk-in:\s*([^|#\n]+)/i);
-                    if (walkInMatch && walkInMatch[1].trim() && walkInMatch[1].trim() !== "undefined") return walkInMatch[1].trim();
-                    if (booking.full_name && booking.full_name !== 'Walk-in') return booking.full_name;
-                    if (booking.user?.profile?.full_name && booking.user.profile.full_name !== 'Walk-in') return booking.user.profile.full_name;
-                    if (booking.customer?.full_name && booking.customer.full_name !== 'Walk-in') return booking.customer.full_name;
-                    if (booking.user_name && booking.user_name !== 'Walk-in' && booking.user_name !== user?.full_name) return booking.user_name;
-                    if (booking.user?.email && !booking.user.email.endsWith('.local')) return booking.user.email.split('@')[0];
-                    return "Guest Customer";
-                  };
-                const displayName = getDisplayName();
+                const displayName = getBookingDisplayName(booking, user?.full_name);
                 
                 return (
                 <Card
