@@ -75,6 +75,26 @@ const Signup = () => {
       return;
     }
 
+    if (phone) {
+      if (!/^\d+$/.test(phone)) {
+        toast({
+          title: "Invalid Phone Number",
+          description: "Phone number must contain digits only.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (phone.length < 9 || phone.length > 10) {
+        toast({
+          title: "Invalid Phone Number",
+          description: "Phone number must be 10 digits (or 9 digits).",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -188,7 +208,8 @@ const Signup = () => {
                     type="tel"
                     placeholder="000 000 0000"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                    maxLength={10}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     className="h-14 bg-slate-50 border-none rounded-2xl font-bold px-5 flex-1 shadow-inner"
                   />
                 </div>

@@ -20,7 +20,7 @@ import {
 import { countryCodes } from "@/utils/countryCodes";
 
 const CustomerSignup = () => {
-    const MAX_PHONE_DIGITS = 12;
+    const MAX_PHONE_DIGITS = 10;
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [countryCode, setCountryCode] = useState("Malaysia-+60");
@@ -66,22 +66,24 @@ const CustomerSignup = () => {
             return;
         }
 
-        if (phone && !/^\d+$/.test(phone)) {
-            toast({
-                title: "Invalid Phone Number",
-                description: "Phone number must contain digits only.",
-                variant: "destructive",
-            });
-            return;
-        }
+        if (phone) {
+            if (!/^\d+$/.test(phone)) {
+                toast({
+                    title: "Invalid Phone Number",
+                    description: "Phone number must contain digits only.",
+                    variant: "destructive",
+                });
+                return;
+            }
 
-        if (phone && phone.length > MAX_PHONE_DIGITS) {
-            toast({
-                title: "Invalid Phone Number",
-                description: `Phone number cannot be longer than ${MAX_PHONE_DIGITS} digits.`,
-                variant: "destructive",
-            });
-            return;
+            if (phone.length < 9 || phone.length > MAX_PHONE_DIGITS) {
+                toast({
+                    title: "Invalid Phone Number",
+                    description: `Phone number must be ${MAX_PHONE_DIGITS} digits (or 9 digits).`,
+                    variant: "destructive",
+                });
+                return;
+            }
         }
 
         setLoading(true);
