@@ -172,7 +172,20 @@ export default function CustomerDetailsPage() {
         setLoading(true);
         try {
             // Fetch Profile from local API
-            const profileData = await api.profiles.getById(userId);
+            let profileData: any = null;
+            try {
+                profileData = await api.profiles.getById(userId);
+            } catch (err) {
+                console.warn("Could not fetch direct profile:", err);
+            }
+
+            // Fetch Bookings for this customer
+            let bookingsData: any[] = [];
+            try {
+                bookingsData = await api.bookings.getAll({ user_id: userId, salon_id: currentSalon.id });
+            } catch (err) {
+                console.warn("Error fetching customer bookings:", err);
+            }
 
             const directName = profileData?.full_name || profileData?.profile?.full_name || '';
             const directPhone = profileData?.phone || profileData?.profile?.phone || '';
@@ -187,7 +200,7 @@ export default function CustomerDetailsPage() {
             if (!finalName && bookingsData && bookingsData.length > 0) {
                 for (const b of bookingsData) {
                     if (!finalName) {
-                        finalName = b.full_name || b.user_name;
+                        finalName = b.full_name || b.user_name || (b as any).customer_name;
                         if (!finalName && b.notes) {
                             const walkInMatch = b.notes.match(/(?:Walk-in|Manual Customer):\s*([^|,#\n]+)/);
                             if (walkInMatch && walkInMatch[1].trim() && walkInMatch[1].trim() !== "undefined") {
@@ -195,8 +208,8 @@ export default function CustomerDetailsPage() {
                             }
                         }
                     }
-                    if (!finalPhone) finalPhone = b.phone || b.user_phone || b.customer_phone;
-                    if (!finalEmail) finalEmail = b.email;
+                    if (!finalPhone) finalPhone = b.phone || b.user_phone || (b as any).customer_phone;
+                    if (!finalEmail) finalEmail = b.email || (b as any).customer_email;
                 }
             }
 

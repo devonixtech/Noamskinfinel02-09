@@ -1040,14 +1040,14 @@ export default function AppointmentsPage() {
 
                       <div className="flex items-center gap-6 self-end md:self-auto">
                         <div className="text-right">
-                          <p className="text-xl font-black text-foreground flex items-center justify-end gap-2">
+                          <div className="text-xl font-black text-foreground flex items-center justify-end gap-2">
                             {Number(booking.discount_amount || 0) > 0 && (
                               <Badge className="bg-green-500/10 text-green-400 border-none text-[8px] font-black uppercase tracking-tighter">
                                 -MYR {Number(booking.discount_amount).toFixed(2)} OFF {booking.coupon_code ? `(${booking.coupon_code})` : ''}
                               </Badge>
                             )}
                             MYR {Number(booking.price || 0).toFixed(2)}
-                          </p>
+                          </div>
                           {Number(booking.discount_amount || 0) > 0 && (
                             <span className="text-[10px] text-muted-foreground line-through flex justify-end">
                               Orig: MYR {Number(booking.original_price || booking.service_price || (Number(booking.price || 0) + Number(booking.discount_amount || 0))).toFixed(2)}
