@@ -210,6 +210,19 @@ const BookAppointment = () => {
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [salonOffers, setSalonOffers] = useState<any[]>([]);
+
+  const activeSalonOffers = useMemo(() => {
+    return salonOffers.filter((o: any) => {
+      if (!o || !o.code) return false;
+      if (o.is_active === false || o.status === 'inactive' || o.status === 'expired') return false;
+      if (o.end_date) {
+        const expiry = new Date(o.end_date).getTime() + 24 * 60 * 60 * 1000;
+        if (Date.now() > expiry) return false;
+      }
+      if (o.max_uses != null && o.used_count != null && Number(o.used_count) >= Number(o.max_uses)) return false;
+      return true;
+    });
+  }, [salonOffers]);
   const [availableStaff, setAvailableStaff] = useState<any[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [loadingStaff, setLoadingStaff] = useState(false);
@@ -1127,13 +1140,13 @@ const BookAppointment = () => {
                   </div>
 
                   {/* Available Offers */}
-                  {salonOffers.length > 0 && (
+                  {activeSalonOffers.length > 0 && (
                     <div className="space-y-4">
                       <Label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                         <Gift className="w-4 h-4" /> Available Offers
                       </Label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {salonOffers.filter((o: any) => o.code).map((offer: any) => {
+                        {activeSalonOffers.map((offer: any) => {
                           const isApplied = appliedCoupon?.code === offer.code;
                           const discountText = offer.discount_type === 'percentage' || offer.discount_type === 'percent'
                             ? `${offer.discount_value}% OFF`

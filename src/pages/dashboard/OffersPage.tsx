@@ -101,8 +101,29 @@ const OffersPage = () => {
     }
     setLoading(true);
     try {
-      const response = await api.offers.getBySalon(currentSalon.id);
-      setOffers(Array.isArray(response) ? response : []);
+      const response = await api.offers.getBySalon(currentSalon.id, true);
+      const normalized: Offer[] = (Array.isArray(response) ? response : []).map((o: any) => {
+        const isExpired = o.end_date && new Date(o.end_date) < new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const isMaxedOut = o.max_uses != null && o.used_count != null && o.used_count >= o.max_uses;
+        const status: 'active' | 'inactive' | 'expired' = (o.is_active === false) ? 'inactive' : (isExpired || isMaxedOut) ? 'expired' : 'active';
+
+        return {
+          id: o.id,
+          salon_id: o.salon_id,
+          title: o.name || o.title || 'Special Offer',
+          description: o.description || null,
+          code: o.code || '',
+          type: (o.discount_type || o.type || 'percentage') as any,
+          value: Number(o.discount_value !== undefined ? o.discount_value : (o.value || 0)),
+          max_usage: o.max_uses !== undefined ? o.max_uses : (o.max_usage || null),
+          usage_count: Number(o.used_count !== undefined ? o.used_count : (o.usage_count || 0)),
+          status,
+          start_date: o.start_date || null,
+          end_date: o.end_date || null,
+          created_at: o.created_at || new Date().toISOString()
+        };
+      });
+      setOffers(normalized);
     } catch (error) {
       console.error("Error fetching offers:", error);
       toast({
@@ -159,11 +180,19 @@ const OffersPage = () => {
     setSaving(true);
     try {
       const offerData = {
-        ...formData,
-        code: formData.code.trim().replace(/[\r\n]+/g, ' '), // Clean up newlines
-        salon_id: currentSalon.id,
+        name: formData.title,
+        title: formData.title,
+        description: formData.description || null,
+        code: formData.code.trim().toUpperCase(),
+        discount_type: formData.type,
+        type: formData.type,
+        discount_value: parseFloat(formData.value) || 0,
         value: parseFloat(formData.value) || 0,
+        salon_id: currentSalon.id,
+        max_uses: formData.max_usage ? parseInt(formData.max_usage) : null,
         max_usage: formData.max_usage ? parseInt(formData.max_usage) : null,
+        is_active: formData.status === 'active',
+        status: formData.status,
         start_date: formData.start_date || null,
         end_date: formData.end_date || null
       };
@@ -209,7 +238,7 @@ const OffersPage = () => {
       title: offer.title,
       description: offer.description || "",
       code: offer.code,
-      type: offer.type || offer.discount_type,
+      type: offer.type,
       value: offer.value.toString(),
       max_usage: offer.max_usage?.toString() || "",
       start_date: offer.start_date ? new Date(offer.start_date).toISOString().split('T')[0] : "",

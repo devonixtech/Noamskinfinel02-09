@@ -942,8 +942,8 @@ export const api = {
         }),
     },
     offers: {
-        getBySalon: async (salonId: string) => {
-            const data = await fetchWithAuth(`/offers?salon_id=${salonId}`);
+        getBySalon: async (salonId: string, includeInactive: boolean = false) => {
+            const data = await fetchWithAuth(`/offers?salon_id=${salonId}${includeInactive ? '&all=true' : ''}`);
             return toArray(data, 'offers');
         },
         getById: (id: string) => fetchWithAuth(`/offers/${id}`),
