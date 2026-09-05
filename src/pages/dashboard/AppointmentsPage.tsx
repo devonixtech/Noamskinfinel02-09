@@ -329,27 +329,10 @@ export default function AppointmentsPage() {
   }, [currentSalon]);
 
   const createNewAppointment = async () => {
-    if (!currentSalon || !newBooking.serviceId || !newBooking.customerName) {
+    if (!currentSalon || !newBooking.serviceId || !newBooking.customerName || !newBooking.date || !newBooking.time) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Duplicate Check
-    const hasConflict = bookings.some(b =>
-      b.booking_date === newBooking.date &&
-      b.booking_time === newBooking.time &&
-      b.staff_id === newBooking.staffId &&
-      b.status !== 'cancelled'
-    );
-
-    if (hasConflict) {
-      toast({
-        title: "Schedule Conflict",
-        description: "This staff member already has an appointment at this time.",
+        description: "Please fill in all required fields (Service, Customer Name, Date, and Time).",
         variant: "destructive",
       });
       return;
@@ -357,6 +340,67 @@ export default function AppointmentsPage() {
 
     setCreatingBooking(true);
     try {
+      // Dynamic Conflict Check for selected date
+      const bookingsOnDate = await api.bookings.getAll({
+        salon_id: currentSalon.id,
+        date: newBooking.date
+      });
+
+      const selectedService = availableServices.find(s => s.id === newBooking.serviceId);
+      const newDuration = selectedService?.duration_minutes || 30;
+
+      const [newH, newM] = newBooking.time.split(':').map(Number);
+      const newStart = newH * 60 + newM;
+      const newEnd = newStart + newDuration;
+
+      const activeBookings = (Array.isArray(bookingsOnDate) ? bookingsOnDate : []).filter((b: any) => b.status !== 'cancelled');
+
+      for (const b of activeBookings) {
+        let timeStr = b.booking_time;
+        if (typeof timeStr === 'string') timeStr = timeStr.trim().slice(0, 5);
+        const [bH, bM] = timeStr.split(':').map(Number);
+        const bStart = bH * 60 + bM;
+        const bDuration = Number(b.duration_minutes || b.service?.duration_minutes || 30);
+        const bEnd = bStart + bDuration;
+
+        const isOverlapping = newStart < bEnd && newEnd > bStart;
+
+        if (isOverlapping && newBooking.staffId && b.staff_id === newBooking.staffId) {
+          const staffObj = staffMembers.find(s => s.id === newBooking.staffId);
+          const startFormatted = `${Math.floor(bStart / 60).toString().padStart(2, '0')}:${(bStart % 60).toString().padStart(2, '0')}`;
+          const endFormatted = `${Math.floor(bEnd / 60).toString().padStart(2, '0')}:${(bEnd % 60).toString().padStart(2, '0')}`;
+          toast({
+            title: "Schedule Conflict",
+            description: `${staffObj?.display_name || 'Selected specialist'} already has an appointment from ${startFormatted} to ${endFormatted}.`,
+            variant: "destructive",
+          });
+          setCreatingBooking(false);
+          return;
+        }
+      }
+
+      if (!newBooking.staffId && staffMembers.length > 0) {
+        const overlapping = activeBookings.filter((b: any) => {
+          let timeStr = b.booking_time;
+          if (typeof timeStr === 'string') timeStr = timeStr.trim().slice(0, 5);
+          const [bH, bM] = timeStr.split(':').map(Number);
+          const bStart = bH * 60 + bM;
+          const bDuration = Number(b.duration_minutes || b.service?.duration_minutes || 30);
+          const bEnd = bStart + bDuration;
+          return newStart < bEnd && newEnd > bStart;
+        });
+
+        if (overlapping.length >= staffMembers.length) {
+          toast({
+            title: "Fully Booked Slot",
+            description: `All team members are already booked at ${newBooking.time}. Please choose another time.`,
+            variant: "destructive",
+          });
+          setCreatingBooking(false);
+          return;
+        }
+      }
+
       await api.bookings.create({
         salon_id: currentSalon.id,
         service_id: newBooking.serviceId,
@@ -369,7 +413,7 @@ export default function AppointmentsPage() {
 
       toast({
         title: "Appointment Created",
-        description: `Appointment for ${newBooking.customerName} has been scheduled locally`,
+        description: `Appointment for ${newBooking.customerName} has been scheduled successfully`,
       });
 
       // Quick WhatsApp Confirmation
