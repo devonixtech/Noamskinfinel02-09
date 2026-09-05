@@ -53,6 +53,7 @@ import { useMobile } from "@/hooks/use-mobile";
 import api from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
+import { sendAppointmentConfirmation } from "@/utils/whatsapp";
 
 interface Customer {
   user_id: string;
@@ -87,6 +88,105 @@ export default function CustomersPage() {
   const location = useLocation();
   const isStaffMode = location.pathname.startsWith("/staff");
   const [staffProfileId, setStaffProfileId] = useState<string | null>(null);
+
+  // Book Appointment Modal State
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedCustomerForBooking, setSelectedCustomerForBooking] = useState<Customer | null>(null);
+  const [availableServices, setAvailableServices] = useState<any[]>([]);
+  const [staffMembers, setStaffMembers] = useState<any[]>([]);
+  const [creatingBooking, setCreatingBooking] = useState(false);
+  const [bookingForm, setBookingForm] = useState({
+    serviceId: "",
+    staffId: "",
+    date: format(new Date(), "yyyy-MM-dd"),
+    time: "10:00",
+    notes: ""
+  });
+
+  useEffect(() => {
+    const fetchServicesAndStaff = async () => {
+      if (!currentSalon) return;
+      try {
+        const [servicesData, staffData] = await Promise.all([
+          api.services.getBySalon(currentSalon.id),
+          api.staff.getBySalon(currentSalon.id)
+        ]);
+        setAvailableServices(Array.isArray(servicesData) ? servicesData : []);
+        setStaffMembers(Array.isArray(staffData) ? staffData : []);
+      } catch (e) {
+        console.error("Failed to load services or staff", e);
+      }
+    };
+    fetchServicesAndStaff();
+  }, [currentSalon]);
+
+  const handleOpenBookAppointment = (customer: Customer) => {
+    setSelectedCustomerForBooking(customer);
+    setBookingForm({
+      serviceId: availableServices[0]?.id || "",
+      staffId: isStaffMode && staffProfileId ? staffProfileId : "",
+      date: format(new Date(), "yyyy-MM-dd"),
+      time: "10:00",
+      notes: ""
+    });
+    setShowBookingModal(true);
+  };
+
+  const handleCreateBooking = async () => {
+    if (!currentSalon || !selectedCustomerForBooking || !bookingForm.serviceId) {
+      toast({
+        title: "Missing Service",
+        description: "Please select a service for the appointment.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setCreatingBooking(true);
+    try {
+      const custName = selectedCustomerForBooking.full_name || "Customer";
+      const custPhone = selectedCustomerForBooking.phone || "";
+
+      await api.bookings.create({
+        salon_id: currentSalon.id,
+        service_id: bookingForm.serviceId,
+        staff_id: bookingForm.staffId || (isStaffMode ? staffProfileId : null) || null,
+        booking_date: bookingForm.date,
+        booking_time: bookingForm.time,
+        user_id: selectedCustomerForBooking.user_id,
+        notes: `Walk-in: ${custName}${custPhone ? ' | ' + custPhone : ''}${bookingForm.notes ? ' | ' + bookingForm.notes : ''}`,
+        status: "confirmed",
+      });
+
+      toast({
+        title: "Appointment Booked",
+        description: `Appointment for ${custName} scheduled for ${format(new Date(bookingForm.date), "MMM d, yyyy")} at ${bookingForm.time}.`,
+      });
+
+      if (custPhone) {
+        const selectedService = availableServices.find(s => s.id === bookingForm.serviceId);
+        sendAppointmentConfirmation({
+          user_name: custName,
+          user_phone: custPhone,
+          booking_date: bookingForm.date,
+          booking_time: bookingForm.time,
+          service_name: selectedService?.name || 'Service'
+        }, currentSalon);
+      }
+
+      setShowBookingModal(false);
+      fetchCustomers();
+    } catch (error: any) {
+      console.error("Error creating booking:", error);
+      toast({
+        title: "Booking Failed",
+        description: error.message || "Failed to schedule appointment.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingBooking(false);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -629,45 +729,47 @@ export default function CustomersPage() {
                       )}
 
                       {/* Action Menu */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={`${isMobile ? 'w-8 h-8' : 'w-9 h-9 opacity-0 group-hover:opacity-100'} transition-opacity hover:bg-secondary/50`}
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={`${isMobile ? 'w-8 h-8' : 'w-9 h-9 opacity-0 group-hover:opacity-100'} transition-opacity hover:bg-secondary/50`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent 
+                            align="end" 
+                            className="w-56 p-2 rounded-2xl border-none shadow-2xl bg-card"
+                            onClick={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
                           >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem
-                            className="hover:bg-secondary/50"
-                            onClick={() => {
-                              toast({
-                                title: "Book Appointment",
-                                description: "Booking feature will be available soon",
-                              });
-                            }}
-                          >
-                            <Calendar className="w-4 h-4 mr-2" />
-                            Book Appointment
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="hover:bg-secondary/50"
-                            onClick={() => navigate(`${isStaffMode ? '/staff' : '/salon'}/customers/${customer.user_id}`)}
-                          >
-                            <Users className="w-4 h-4 mr-2" />
-                            View Customer Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="hover:bg-secondary/50"
-                            onClick={() => navigate(`${isStaffMode ? '/staff' : '/salon'}/customers/${customer.user_id}`)}
-                          >
-                            <ChevronRight className="w-4 h-4 mr-2" />
-                            View History
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            <DropdownMenuItem
+                              className="rounded-xl py-3 font-semibold hover:bg-secondary/50 cursor-pointer text-accent focus:text-accent"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenBookAppointment(customer);
+                              }}
+                            >
+                              <Calendar className="w-4 h-4 mr-2" />
+                              Book Appointment
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="rounded-xl py-3 font-semibold hover:bg-secondary/50 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`${isStaffMode ? '/staff' : '/salon'}/customers/${customer.user_id}`);
+                              }}
+                            >
+                              <Users className="w-4 h-4 mr-2" />
+                              View Customer Details
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   );
                 })}
@@ -675,6 +777,122 @@ export default function CustomersPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Book Appointment Dialog */}
+        <Dialog open={showBookingModal} onOpenChange={setShowBookingModal}>
+          <DialogContent className="sm:max-w-md rounded-3xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-accent" />
+                Book Appointment
+              </DialogTitle>
+              <DialogDescription>
+                Schedule a new appointment for <span className="font-bold text-foreground">{selectedCustomerForBooking?.full_name || 'Customer'}</span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Customer</Label>
+                  <Input 
+                    value={selectedCustomerForBooking?.full_name || ""} 
+                    disabled 
+                    className="bg-muted/40 font-medium rounded-xl"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Phone</Label>
+                  <Input 
+                    value={selectedCustomerForBooking?.phone || "No phone"} 
+                    disabled 
+                    className="bg-muted/40 font-medium rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Service <span className="text-rose-500">*</span></Label>
+                <Select 
+                  value={bookingForm.serviceId} 
+                  onValueChange={v => setBookingForm(prev => ({ ...prev, serviceId: v }))}
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Select a service" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {availableServices.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} - MYR {Number(s.price).toFixed(2)} ({s.duration_minutes || 30} mins)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Specialist / Staff (Optional)</Label>
+                <Select 
+                  value={bookingForm.staffId} 
+                  onValueChange={v => setBookingForm(prev => ({ ...prev, staffId: v }))}
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Select specialist (Optional)" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {staffMembers.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.display_name || s.name || s.user?.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Date</Label>
+                  <Input
+                    type="date"
+                    value={bookingForm.date}
+                    onChange={e => setBookingForm(prev => ({ ...prev, date: e.target.value }))}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Time</Label>
+                  <Input
+                    type="time"
+                    value={bookingForm.time}
+                    onChange={e => setBookingForm(prev => ({ ...prev, time: e.target.value }))}
+                    className="rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Notes (Optional)</Label>
+                <Input
+                  placeholder="Special requests or notes..."
+                  value={bookingForm.notes}
+                  onChange={e => setBookingForm(prev => ({ ...prev, notes: e.target.value }))}
+                  className="rounded-xl"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowBookingModal(false)} className="rounded-xl font-bold">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateBooking}
+                disabled={creatingBooking || !bookingForm.serviceId}
+                className="bg-accent text-white font-bold rounded-xl"
+              >
+                {creatingBooking ? "Booking..." : "Confirm Booking"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Add Customer Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
