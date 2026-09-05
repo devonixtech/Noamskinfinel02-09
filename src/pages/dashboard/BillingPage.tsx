@@ -245,9 +245,9 @@ const BillingPage = () => {
       const bookings = await api.bookings.getAll({ salon_id: currentSalon.id });
       const bookingsArray = Array.isArray(bookings) ? bookings : [];
 
-      const invoicesData: Invoice[] = bookingsArray.map((booking: any, index: number) => {
+      const invoicesData: Invoice[] = bookingsArray.map((booking: any) => {
         const pp = booking.platformPayments?.[0];
-        const invoiceNumber = pp?.invoice_number || `L-INV-${String(index + 1).padStart(4, '0')}`;
+        const invoiceNumber = pp?.invoice_number || `INV-${booking.id.substring(0, 8).toUpperCase()}`;
         
         const actualPaid = Number(booking.price_paid || 0);
         let totalValue = Number(booking.service?.price || 0);
@@ -654,7 +654,7 @@ const BillingPage = () => {
                     </div>
                     <div className="text-right">
                       <div className="space-y-1 text-slate-500 print:text-slate-500 font-medium text-sm">
-                        <p>Invoice no: <span className="text-slate-900 print:text-slate-900">{selectedInvoice.id.replace('L-INV-', '')}</span></p>
+                        <p>Invoice no: <span className="text-slate-900 print:text-slate-900 font-mono font-bold">{selectedInvoice.id}</span></p>
                         <p>Invoice date: <span className="text-slate-900 print:text-slate-900">{format(new Date(selectedInvoice.date), "MMM d, yyyy")}</span></p>
                       </div>
                     </div>
@@ -985,7 +985,7 @@ const BillingPage = () => {
                 <div className="text-right">
                   <h2 className="text-3xl font-black text-slate-900 mb-4 uppercase tracking-tighter">Tax Invoice</h2>
                   <div className="space-y-1 text-slate-500 font-medium text-sm">
-                    <p>Invoice no: <span className="text-slate-900">{selectedInvoice.id.replace('L-INV-', '')}</span></p>
+                    <p>Invoice no: <span className="text-slate-900 font-mono font-bold">{selectedInvoice.id}</span></p>
                     <p>Invoice date: <span className="text-slate-900">{format(new Date(selectedInvoice.date), "MMM d, yyyy")}</span></p>
                   </div>
                 </div>
