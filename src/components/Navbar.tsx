@@ -42,6 +42,7 @@ const Navbar = () => {
     const [isSearching, setIsSearching] = useState(false);
     const [shopProducts, setShopProducts] = useState<any[]>([]);
     const [isShopLoading, setIsShopLoading] = useState(true);
+    const location = useLocation();
     const { user, signOut } = useAuth();
     const { cartCount, addToCart } = useCart();
 
@@ -98,37 +99,42 @@ const Navbar = () => {
         return (Array.isArray(shopProducts) ? shopProducts : []).filter(p => p.category?.trim() === category).slice(0, 4);
     };
 
+    const isShopActive = location.pathname.startsWith('/shop') || location.pathname.startsWith('/product');
+
     return (
         <header className="fixed top-0 left-0 right-0 z-50">
 
             <nav className="bg-[#FAF9F6] border-b border-[#F2EEE9] transition-all duration-300">
-                <div className="container mx-auto px-4 h-20 md:h-20 flex items-center justify-between">
+                <div className="container mx-auto px-4 md:px-8 h-16 md:h-[72px] flex items-center justify-between">
 
                     {/* Logo Section */}
                     <Link to="/" className="flex items-center gap-2">
-                        <img src={logo} alt="Noamskin Logo" className="h-10 md:h-16 w-auto" />
+                        <img src={logo} alt="Noamskin Logo" className="h-8 md:h-10 w-auto" />
                     </Link>
 
                     {/* Desktop Navigation Links - Center */}
-                    <div className="hidden lg:flex items-center gap-10 xl:gap-14">
-                        {navLinks.slice(0, 3).map((link) => (
-                            <Link
-                                key={link.name}
-                                to={link.href}
-                                className="text-[16px] lg:text-[0.9rem]  tracking-[0.1em] text-black transition-all flex items-center gap-1.5 relative py-1 group" style={{ fontWeight: "500" }}
-                            >
-                                {link.name}
-                                <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out origin-left" />
-                            </Link>
-                        ))}
+                    <div className="hidden lg:flex items-center gap-8 xl:gap-11">
+                        {navLinks.slice(0, 3).map((link) => {
+                            const isActive = location.pathname === link.href;
+                            return (
+                                <Link
+                                    key={link.name}
+                                    to={link.href}
+                                    className="text-[13px] font-medium tracking-[0.14em] text-black transition-all flex items-center gap-1.5 relative py-1 group"
+                                >
+                                    {link.name}
+                                    <span className={`absolute bottom-0 left-0 w-full h-[1.5px] bg-black transition-transform duration-300 ease-out origin-left ${isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
+                                </Link>
+                            );
+                        })}
 
                         {/* SHOP Nested Dropdown - 3rd Position */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button style={{ fontWeight: "500" }} className="text-[16px] lg:text-[0.8rem]  tracking-[0.1em] text-black transition-all flex items-center gap-1.5 relative py-1 group outline-none">
+                                <button className="text-[13px] font-medium tracking-[0.14em] text-black transition-all flex items-center gap-1 relative py-1 group outline-none">
                                     SHOP
-                                    <ChevronDown className="w-4 h-4 transition-transform group-data-[state=open]:rotate-180" />
-                                    <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out origin-left" />
+                                    <ChevronDown className="w-3.5 h-3.5 transition-transform group-data-[state=open]:rotate-180 opacity-70" />
+                                    <span className={`absolute bottom-0 left-0 w-full h-[1.5px] bg-black transition-transform duration-300 ease-out origin-left ${isShopActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-56 mt-4 p-2 bg-card rounded-2xl border border-border shadow-2xl backdrop-blur-xl animate-in zoom-in-95 duration-200">
@@ -175,32 +181,36 @@ const Navbar = () => {
                             </DropdownMenuContent>
                         </DropdownMenu>
 
-                        {navLinks.slice(3).map((link) => (
-                            <Link
-                                key={link.name}
-                                to={link.href} style={{ fontWeight: "500" }}
-                                className="text-[16px] lg:text-[0.8rem] tracking-[0.1em] text-black transition-all flex items-center gap-1.5 relative py-1 group"
-                            >
-                                {link.name}
-                                <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out origin-left" />
-                            </Link>
-                        ))}
+                        {navLinks.slice(3).map((link) => {
+                            const isActive = location.pathname === link.href;
+                            return (
+                                <Link
+                                    key={link.name}
+                                    to={link.href}
+                                    className="text-[13px] font-medium tracking-[0.14em] text-black transition-all flex items-center gap-1.5 relative py-1 group"
+                                >
+                                    {link.name}
+                                    <span className={`absolute bottom-0 left-0 w-full h-[1.5px] bg-black transition-transform duration-300 ease-out origin-left ${isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
+                                </Link>
+                            );
+                        })}
                     </div>
 
                     {/* Action Icons Section - Right */}
                     <div className="flex items-center gap-1 md:gap-2">
                         <button
                             onClick={() => setIsSearchOpen(true)}
-                            className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-black hover:bg-black/5 rounded-full transition-all"
+                            className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-black hover:bg-black/5 rounded-full transition-all"
+                            aria-label="Search"
                         >
-                            <Search className="w-5 h-5 md:w-6 md:h-6 stroke-[1.2px]" />
+                            <Search className="w-5 h-5 stroke-[1.3px]" />
                         </button>
 
                         {user ? (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-black hover:bg-black/5 rounded-full transition-all outline-none">
-                                        <User className="w-5 h-5 md:w-6 md:h-6 stroke-[1.2px]" />
+                                    <button className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-black hover:bg-black/5 rounded-full transition-all outline-none" aria-label="User menu">
+                                        <User className="w-5 h-5 stroke-[1.3px]" />
                                     </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-56 mt-4 p-2 bg-card rounded-2xl border border-border shadow-2xl">
@@ -281,10 +291,10 @@ const Navbar = () => {
                             </DropdownMenu>
                         )}
 
-                        <Link to="/cart" className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-black hover:bg-black/5 rounded-full transition-all relative group">
-                            <ShoppingBag className="w-5 h-5 md:w-6 md:h-6 stroke-[1.2px]" />
+                        <Link to="/cart" className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-black hover:bg-black/5 rounded-full transition-all relative group" aria-label="Cart">
+                            <ShoppingBag className="w-5 h-5 stroke-[1.3px]" />
                             {cartCount > 0 && (
-                                <div className="absolute top-1 right-1 md:top-2 md:right-2 min-w-[18px] h-[18px] bg-accent text-white text-[10px] font-black rounded-full flex items-center justify-center animate-in zoom-in border-2 border-background shadow-sm">
+                                <div className="absolute top-0 right-0 min-w-[17px] h-[17px] bg-accent text-white text-[10px] font-black rounded-full flex items-center justify-center animate-in zoom-in border-2 border-background shadow-sm">
                                     {cartCount}
                                 </div>
                             )}
@@ -295,8 +305,8 @@ const Navbar = () => {
                         <div className="lg:hidden">
                             <Sheet open={isOpen} onOpenChange={setIsOpen}>
                                 <SheetTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-10 w-10 md:h-12 md:w-12 text-[#1A1A1A] hover:bg-black/5 rounded-full transition-all">
-                                        <Menu className="w-6 h-6" />
+                                    <Button variant="ghost" size="icon" className="h-9 w-9 md:h-10 md:w-10 text-[#1A1A1A] hover:bg-black/5 rounded-full transition-all">
+                                        <Menu className="w-5 h-5" />
                                     </Button>
                                 </SheetTrigger>
                                 <SheetContent side="right" className="w-full sm:w-[350px] bg-background border-none p-0">

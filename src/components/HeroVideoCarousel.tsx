@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 const HeroVideoCarousel = () => {
     return (
         <div className="w-full px-0">
-            <section className="relative w-full videomargin mt-20 h-[90vh] overflow-hidden">
+            <section className="relative w-full videomargin mt-16 md:mt-[72px] h-[90vh] overflow-hidden">
                 <video
                     autoPlay
                     muted
