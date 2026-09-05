@@ -436,6 +436,8 @@ export default function AppointmentsPage() {
         staff_id: newBooking.staffId || null,
         booking_date: newBooking.date,
         booking_time: newBooking.time,
+        customer_name: newBooking.customerName,
+        customer_phone: newBooking.customerPhone,
         notes: `Walk-in: ${newBooking.customerName}${newBooking.customerPhone ? ' | ' + newBooking.customerPhone : ''}${newBooking.notes ? ' | ' + newBooking.notes : ''}`,
         status: "confirmed",
       });

@@ -329,16 +329,23 @@ export default function CustomerDetailsPage() {
         if (!userId || !currentSalon) return;
         setLoading(true);
         try {
-            // 1. Update Basic Profile
+            // 1. Update Basic Profile + Health Profile
             await api.profiles.updateById(userId, {
                 full_name: editProfileData.full_name.trim(),
                 phone: editProfileData.phone.trim(),
                 email: editProfileData.email.trim(),
                 avatar_url: editProfileData.avatar_url,
-                salon_id: currentSalon.id
+                salon_id: currentSalon.id,
+                skin_type: skinType,
+                allergy_records: allergies,
+                skin_issues: skinIssues,
+                date_of_birth: dob || null,
+                medical_conditions: medicalConditions,
+                notes: notes,
+                concern_photo_url: concernPhotoUrl
             });
 
-            // 2. Update Health Profile
+            // 2. Also save to CustomerRecords table
             await api.customerRecords.saveProfile({
                 user_id: userId,
                 salon_id: currentSalon.id,
@@ -349,7 +356,7 @@ export default function CustomerDetailsPage() {
                 medical_conditions: medicalConditions,
                 notes: notes,
                 concern_photo_url: concernPhotoUrl
-            });
+            }).catch(err => console.warn("CRM save secondary call warning:", err));
 
             setProfile(prev => prev ? ({
                 ...prev,
@@ -665,7 +672,7 @@ export default function CustomerDetailsPage() {
                                                         setEditProfileData({
                                                             full_name: profile.full_name || "",
                                                             phone: profile.phone || "",
-                                                            email: profile.email || "",
+                                                            email: (profile.email && !profile.email.endsWith('.local')) ? profile.email : "",
                                                             avatar_url: profile.avatar_url || ""
                                                         });
                                                         setIsProfileEditDialogOpen(true);
