@@ -614,11 +614,6 @@ export default function CustomersPage() {
               <CardTitle className={`${isMobile ? 'text-lg' : 'text-xl'} font-semibold`}>
                 All Customers ({filteredCustomers.length})
               </CardTitle>
-              {!isMobile && (
-                <Button variant="ghost" size="sm" className="hover:bg-secondary/50">
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              )}
             </div>
           </CardHeader>
           <CardContent className={isMobile ? 'px-4 pb-4' : ''}>
