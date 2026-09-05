@@ -1263,11 +1263,11 @@ export default function AppointmentsPage() {
                       <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Pricing</p>
                       <div className="flex flex-col">
                         <p className="font-bold flex items-center gap-2 text-emerald-600">
-                          MYR {Math.max(0, Number(selectedDetailBooking.price || selectedDetailBooking.service?.price || 0) - Number(selectedDetailBooking.discount_amount || 0)).toFixed(2)}
+                          MYR {Number(selectedDetailBooking.price || 0).toFixed(2)}
                         </p>
                         {Number(selectedDetailBooking.discount_amount || 0) > 0 && (
                           <span className="text-[10px] text-muted-foreground line-through">
-                            Original: MYR {Number(selectedDetailBooking.price || selectedDetailBooking.service?.price || 0).toFixed(2)} (Saved RM {Number(selectedDetailBooking.discount_amount).toFixed(2)})
+                            Original: MYR {Number(selectedDetailBooking.original_price || selectedDetailBooking.service_price || (Number(selectedDetailBooking.price || 0) + Number(selectedDetailBooking.discount_amount || 0))).toFixed(2)} (Saved RM {Number(selectedDetailBooking.discount_amount).toFixed(2)})
                           </span>
                         )}
                       </div>
